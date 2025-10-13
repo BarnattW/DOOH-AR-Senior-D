@@ -1,0 +1,13 @@
+train: ../train/images
+val: ../valid/images
+test: ../test/images
+
+nc: 1
+names: ['WTC']
+
+roboflow:
+  workspace: senior-d-dooh-ar
+  project: dooh-ar-senior-d-vnzov
+  version: 1
+  license: CC BY 4.0
+  url: https://universe.roboflow.com/senior-d-dooh-ar/dooh-ar-senior-d-vnzov/dataset/1
