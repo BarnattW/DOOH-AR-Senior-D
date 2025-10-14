@@ -3,18 +3,44 @@ name = "dooh-ai"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.11,<3.12"
+
 dependencies = [
+    # Core libraries
     "huggingface-hub>=0.35.3",
-    "onnx>=1.19.0",
-    "onnxconverter-common>=1.16.0",
-    "onnxruntime>=1.23.1",
-    "pillow>=11.3.0",
-    "pillow-heif>=1.1.1",
-    "ultralytics>=8.3.207",
+    "onnx==1.15.0",
+    "onnxconverter-common==1.13.0",
+    "onnxruntime==1.19.2",
+    "opencv-python==4.10.0.84",
+    "pillow>=11.2.0,<12",
+    "pillow-heif==0.16.0",
+    "roboflow==1.2.11",
+    "ultralytics==8.2.77",
+
+    # CUDA (GPU) builds for Windows only
+    "torch==2.5.1+cu121; sys_platform == 'win32'",
+    "torchvision==0.20.1+cu121; sys_platform == 'win32'",
+    "torchaudio==2.5.1+cu121; sys_platform == 'win32'",
+
+    # CPU builds fallback for macOS/Linux
+    "torch==2.5.1; sys_platform != 'win32'",
+    "torchvision==0.20.1; sys_platform != 'win32'",
+    "torchaudio==2.5.1; sys_platform != 'win32'",
 ]
 
 [dependency-groups]
 dev = [
     "ipykernel>=6.30.1",
+    "jupyter>=1.0.0"
 ]
+
+[[tool.uv.index]]
+url = "https://pypi.org/simple"
+default = true
+
+[[tool.uv.index]]
+url = "https://download.pytorch.org/whl/cu121"
+
+[tool.uv]
+environments = ["sys_platform == 'win32'"]
+index-strategy = "unsafe-best-match"
