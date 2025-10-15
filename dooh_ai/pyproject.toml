@@ -13,19 +13,25 @@ dependencies = [
     "onnxruntime==1.19.2",
     "opencv-python==4.10.0.84",
     "pillow>=11.2.0,<12",
-    "pillow-heif==0.16.0",
+    "pillow-heif==0.15.0",
     "roboflow==1.2.11",
     "ultralytics==8.2.77",
-
     # CUDA (GPU) builds for Windows only
     "torch==2.5.1+cu121; sys_platform == 'win32'",
     "torchvision==0.20.1+cu121; sys_platform == 'win32'",
     "torchaudio==2.5.1+cu121; sys_platform == 'win32'",
-
     # CPU builds fallback for macOS/Linux
     "torch==2.5.1; sys_platform != 'win32'",
     "torchvision==0.20.1; sys_platform != 'win32'",
     "torchaudio==2.5.1; sys_platform != 'win32'",
+    "onnxslim>=0.1.57",
+    "onnxruntime-gpu>=1.23.0",
+    "tensorflow>=2.20.0",
+    "tf-keras>=2.20.1",
+    "onnx2tf<=1.22.3",
+    "onnx-graphsurgeon>=0.3.26",
+    "sng4onnx>=1.0.1",
+    "tflite-support>=0.1.0a1",
 ]
 
 [dependency-groups]
