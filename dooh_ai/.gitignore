@@ -11,5 +11,8 @@ wheels/
 
 .env
 
+
 ml_training
+*.pt
+DOOH-AR-*
 ../runs
