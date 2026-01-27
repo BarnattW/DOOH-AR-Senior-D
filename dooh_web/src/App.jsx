@@ -11,8 +11,9 @@ function App() {
   const isDetectingRef = useRef(false);
   const [lastDetections, setLastDetections] = useState([]);
 
-  // Detection rate: detect every N frames (2 = ~30 FPS, 3 = ~20 FPS, 5 = ~12 FPS)
-  const DETECTION_INTERVAL = 3;
+  // Detection rate: detect every N frames (5 = ~12 FPS, 6 = ~10 FPS, 10 = ~6 FPS)
+  // Lower FPS for detection keeps UI smooth while still feeling responsive
+  const DETECTION_INTERVAL = 6; // ~10 FPS detection (assuming 60 FPS video)
 
   const { videoRef, streamRef, isRunning, startWebcam, stopWebcam } = useCamera();
   const { session, detect } = useDetector();
