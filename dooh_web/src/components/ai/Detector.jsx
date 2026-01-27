@@ -14,35 +14,62 @@ export const BUILDING_CLASSES = [
  // Add if model has 3 classes
 ];
 
-// Helper function: letterbox
-export const letterbox = (img, newShape = 640) => {
-  const canvasTmp = document.createElement("canvas");
-  const ctxTmp = canvasTmp.getContext("2d");
-  canvasTmp.width = newShape;
-  canvasTmp.height = newShape;
-  ctxTmp.fillStyle = "rgb(114,114,114)";
-  ctxTmp.fillRect(0, 0, newShape, newShape);
+// Reusable letterbox canvas (created once, reused every frame)
+let lbCanvas = null;
+let lbCtx = null;
+const LETTERBOX_SIZE = 640;
+
+// Initialize letterbox canvas once
+const initLetterboxCanvas = () => {
+  if (!lbCanvas) {
+    lbCanvas = document.createElement("canvas");
+    lbCanvas.width = LETTERBOX_SIZE;
+    lbCanvas.height = LETTERBOX_SIZE;
+    lbCtx = lbCanvas.getContext("2d", { willReadFrequently: true });
+  }
+};
+
+// Helper function: letterbox (reuses canvas)
+export const letterbox = (img, newShape = LETTERBOX_SIZE) => {
+  initLetterboxCanvas();
+  
+  // Fill gray background
+  lbCtx.fillStyle = "rgb(114,114,114)";
+  lbCtx.fillRect(0, 0, newShape, newShape);
 
   const ratio = Math.min(newShape / img.width, newShape / img.height);
   const newW = img.width * ratio;
   const newH = img.height * ratio;
   const dx = (newShape - newW) / 2;
   const dy = (newShape - newH) / 2;
-  ctxTmp.drawImage(img, dx, dy, newW, newH);
-  const imageData = ctxTmp.getImageData(0, 0, newShape, newShape);
+  lbCtx.drawImage(img, dx, dy, newW, newH);
+  const imageData = lbCtx.getImageData(0, 0, newShape, newShape);
   return { data: imageData.data, ratio, dx, dy };
 };
 
-// Helper function: NMS
+// Optimized NMS with typed arrays and early exit
 export const nms = (boxes, iouThresh = 0.5, maxDetections = 1) => {
-  boxes.sort((a, b) => b[4] - a[4]); // Sort by confidence (index 4)
+  if (boxes.length === 0) return [];
+  
+  // Sort by confidence (index 4)
+  boxes.sort((a, b) => b[4] - a[4]);
+  
   const keep = [];
-
+  const areas = new Float32Array(boxes.length);
+  
+  // Precompute areas
   for (let i = 0; i < boxes.length; i++) {
-    const [x1, y1, x2, y2, conf] = boxes[i];
+    const [x1, y1, x2, y2] = boxes[i];
+    areas[i] = (x2 - x1) * (y2 - y1);
+  }
+
+  for (let i = 0; i < boxes.length && keep.length < maxDetections; i++) {
+    const [x1, y1, x2, y2] = boxes[i];
     let shouldKeep = true;
-    for (const kept of keep) {
-      const [kx1, ky1, kx2, ky2] = kept;
+    
+    for (let j = 0; j < keep.length; j++) {
+      const keptIdx = keep[j];
+      const [kx1, ky1, kx2, ky2] = boxes[keptIdx];
 
       const interX1 = Math.max(x1, kx1);
       const interY1 = Math.max(y1, ky1);
@@ -50,23 +77,20 @@ export const nms = (boxes, iouThresh = 0.5, maxDetections = 1) => {
       const interY2 = Math.min(y2, ky2);
 
       const inter = Math.max(0, interX2 - interX1) * Math.max(0, interY2 - interY1);
-
-      const area1 = (x2 - x1) * (y2 - y1);
-      const area2 = (kx2 - kx1) * (ky2 - ky1);
-      const union = area1 + area2 - inter;
+      const union = areas[i] + areas[keptIdx] - inter;
 
       if (union > 0 && inter / union > iouThresh) {
         shouldKeep = false;
         break;
       }
     }
+    
     if (shouldKeep) {
-      keep.push(boxes[i]);
-      // Limit maximum number of detections
-      if (keep.length >= maxDetections) break;
+      keep.push(i);
     }
   }
-  return keep;
+  
+  return keep.map(idx => boxes[idx]);
 };
 
 export function useDetector() {
@@ -89,14 +113,25 @@ export function useDetector() {
 
       // Set WASM file path to CDN location
       ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.17.3/dist/';
-      ort.env.wasm.numThreads = 1;
+      
+      // Enable multi-threading (requires COOP/COEP headers)
+      // Falls back to 1 thread if SharedArrayBuffer is not available
+      const numThreads = Math.min(4, navigator.hardwareConcurrency ?? 1);
+      ort.env.wasm.numThreads = numThreads;
+      console.log(`🔧 WASM threads: ${numThreads} (hardware concurrency: ${navigator.hardwareConcurrency ?? 'unknown'})`);
+
+      // Prefer WebGPU, fallback to WASM automatically
+      // ONNX Runtime will try WebGPU first and fall back to WASM if unavailable
+      const providers = ["webgpu", "wasm"];
+      console.log("🚀 Attempting WebGPU first, will fallback to WASM if unavailable");
 
       try {
         // Model file is in public/ folder, served from root in Vite
         const newSession = await ort.InferenceSession.create("/trio_finetuned_32.onnx", {
-          executionProviders: ["wasm"],
+          executionProviders: providers,
         });
         console.log("✅ Model loaded:", newSession.inputNames, "→", newSession.outputNames);
+        // Note: WebGPU will be used if available, otherwise WASM (fallback is automatic)
         setSession(newSession);
       } catch (error) {
         console.error("Failed to load model:", error);
@@ -137,7 +172,7 @@ export function useDetector() {
     const dataArr = output.data;
     const shape = output.dims;
 
-    // YOLOv8 Decoding
+    // YOLOv8 Decoding with early filtering
     const numFeatures = shape[1];
     const numPred = shape[2];
     const confThresh = 0.6; // 60% confidence minimum
@@ -150,11 +185,41 @@ export function useDetector() {
     
     const numClasses = 3; // Trio model has 3 classes
 
-    // Helper function: sigmoid (for class scores)
-    const sigmoid = (x) => 1.0 / (1.0 + Math.exp(-x));
+    // Optimized sigmoid (faster approximation for large negative values)
+    const sigmoid = (x) => {
+      if (x < -10) return 0;
+      if (x > 10) return 1;
+      return 1.0 / (1.0 + Math.exp(-x));
+    };
 
-    // Iterate over predictions
+    // Early top-K filtering: only process top candidates before full decoding
+    // This reduces work when there are many low-confidence predictions
+    const topKCandidates = [];
+    const TOP_K = 200; // Keep top 200 candidates before full processing
+
+    // First pass: find top-K by max class score (without full sigmoid)
     for (let i = 0; i < numPred; i++) {
+      const baseIdx = i;
+      const class0Raw = dataArr[4 * numPred + baseIdx];
+      const class1Raw = dataArr[5 * numPred + baseIdx];
+      const class2Raw = dataArr[6 * numPred + baseIdx];
+      
+      // Quick max without sigmoid (monotonic, so order is preserved)
+      const maxRaw = Math.max(class0Raw, class1Raw, class2Raw);
+      
+      // Only process if above threshold (rough estimate)
+      if (maxRaw > -1.0) { // Rough threshold before sigmoid
+        topKCandidates.push({ idx: i, score: maxRaw });
+      }
+    }
+    
+    // Sort and keep top K
+    topKCandidates.sort((a, b) => b.score - a.score);
+    const candidatesToProcess = topKCandidates.slice(0, Math.min(TOP_K, topKCandidates.length));
+
+    // Second pass: full decoding only for top candidates
+    for (const candidate of candidatesToProcess) {
+      const i = candidate.idx;
       const x = dataArr[0 * numPred + i];
       const y = dataArr[1 * numPred + i];
       const wBox = dataArr[2 * numPred + i];
@@ -163,6 +228,7 @@ export function useDetector() {
       // Features 4+ are class scores (apply sigmoid)
       const class0Score = sigmoid(dataArr[4 * numPred + i]);
       const class1Score = sigmoid(dataArr[5 * numPred + i]);
+      const class2Score = sigmoid(dataArr[6 * numPred + i]);
       
       // Find the class with highest score
       let maxScore = class0Score;
@@ -171,14 +237,9 @@ export function useDetector() {
         maxScore = class1Score;
         classId = 1;
       }
-      
-      // Check if there's a third class (if model has 3 classes)
-      if (numClasses === 3) {
-        const class2Score = sigmoid(dataArr[6 * numPred + i]);
-        if (class2Score > maxScore) {
-          maxScore = class2Score;
-          classId = 2;
-        }
+      if (class2Score > maxScore) {
+        maxScore = class2Score;
+        classId = 2;
       }
       
       const conf = maxScore;
