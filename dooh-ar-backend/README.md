@@ -2,7 +2,7 @@
 
 This is a Next.js application that demonstrates accessing and displaying Geolocation API data.
 
-## ⚠️ IMPORTANT: HTTPS Required
+## HTTPS Required
 
 **This project requires HTTPS locally for Geolocation features.**
 
