@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useRef, useState } from "react";
 
 export function useCamera() {
   const videoRef = useRef(null);
@@ -10,15 +10,15 @@ export function useCamera() {
     try {
       // Request rear camera (back camera) on mobile devices
       // Use ideal width/height to get better aspect ratio on mobile
-      const stream = await navigator.mediaDevices.getUserMedia({ 
+      const stream = await navigator.mediaDevices.getUserMedia({
         video: {
-          facingMode: 'environment', // 'environment' = rear camera, 'user' = front camera
+          facingMode: "environment", // 'environment' = rear camera, 'user' = front camera
           width: { ideal: 1280 },
-          height: { ideal: 720 }
-        }
+          height: { ideal: 720 },
+        },
       });
       streamRef.current = stream;
-      
+
       // Apply 3x zoom if supported (mobile devices)
       const videoTrack = stream.getVideoTracks()[0];
       if (videoTrack && videoTrack.getCapabilities) {
@@ -28,7 +28,7 @@ export function useCamera() {
           const zoomLevel = Math.min(3.0, maxZoom); // 3x zoom, but don't exceed max
           try {
             await videoTrack.applyConstraints({
-              advanced: [{ zoom: zoomLevel }]
+              advanced: [{ zoom: zoomLevel }],
             });
             console.log(`Applied ${zoomLevel}x zoom`);
           } catch (zoomErr) {
@@ -37,11 +37,17 @@ export function useCamera() {
         }
       }
       
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        videoRef.current.onloadedmetadata = () => {
-          setIsRunning(true);
-          videoRef.current?.play();
+      const videoEl = videoRef.current;
+      if (videoEl) {
+        videoEl.srcObject = stream;
+        videoEl.playsInline = true;
+
+        videoEl.onloadedmetadata = async () => {
+          try {
+            await videoEl.play();
+          } finally {
+            setIsRunning(true);
+          }
         };
       }
     } catch (err) {
@@ -74,13 +80,11 @@ export function Camera({ videoRef }) {
   return (
     <video
       ref={videoRef}
-      width="640"
-      height="480"
       autoPlay
       muted
       playsInline
-      className="hidden"
+      className="w-full sm:max-w-2xl h-auto rounded-lg"
+      style={{ maxHeight: "70vh", objectFit: "contain" }}
     />
   );
 }
-
