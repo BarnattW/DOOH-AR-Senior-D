@@ -1,0 +1,19 @@
+{
+  "name": "dooh-ar-backend",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --experimental-https",
+    "start": "next start",
+    "build": "next build",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "next": "16.1.6"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "typescript": "^5"
+  }
+}
