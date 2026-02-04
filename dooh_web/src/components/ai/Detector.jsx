@@ -2,6 +2,10 @@ import { useState, useEffect } from 'react';
 
 // ONNX Runtime will be loaded dynamically from CDN
 let ort = null;
+let ortPromise = null;
+
+let sessionSingleton = null;
+let sessionPromise = null;
 
 // MODEL CONSTANTS (Based on YOLOv8 Segmentation Output)
 const NUM_FEATURES = 39; // 4 (box) + 3 (class scores) + 32 (mask coeffs) for trio model
@@ -20,18 +24,30 @@ export const letterbox = (img, newShape = 640) => {
   const ctxTmp = canvasTmp.getContext("2d");
   canvasTmp.width = newShape;
   canvasTmp.height = newShape;
+
   ctxTmp.fillStyle = "rgb(114,114,114)";
   ctxTmp.fillRect(0, 0, newShape, newShape);
 
-  const ratio = Math.min(newShape / img.width, newShape / img.height);
-  const newW = img.width * ratio;
-  const newH = img.height * ratio;
-  const dx = (newShape - newW) / 2;
-  const dy = (newShape - newH) / 2;
-  ctxTmp.drawImage(img, dx, dy, newW, newH);
+  const srcW = img.videoWidth || img.naturalWidth || img.width;
+  const srcH = img.videoHeight || img.naturalHeight || img.height;
+
+  if (!srcW || !srcH) {
+    // Video metadata not ready yet; caller should retry later
+    return { data: new Uint8ClampedArray(newShape * newShape * 4), ratio: 1, dx: 0, dy: 0 };
+  }
+
+  const ratio = Math.min(newShape / srcW, newShape / srcH);
+  const newW = Math.round(srcW * ratio);
+  const newH = Math.round(srcH * ratio);
+  const dx = Math.round((newShape - newW) / 2);
+  const dy = Math.round((newShape - newH) / 2);
+
+  ctxTmp.drawImage(img, 0, 0, srcW, srcH, dx, dy, newW, newH);
+
   const imageData = ctxTmp.getImageData(0, 0, newShape, newShape);
   return { data: imageData.data, ratio, dx, dy };
 };
+
 
 // Helper function: NMS
 export const nms = (boxes, iouThresh = 0.5, maxDetections = 1) => {
@@ -69,41 +85,72 @@ export const nms = (boxes, iouThresh = 0.5, maxDetections = 1) => {
   return keep;
 };
 
+async function loadOrtOnce() {
+  if (ort) return ort;
+  if (ortPromise) return ortPromise;
+
+  ortPromise = (async () => {
+    const ortModule = await import(
+      "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.17.3/dist/esm/ort.min.js"
+    );
+
+    // Depending on bundler/CDN, it might be default or namespace.
+    // This makes it robust:
+    ort = ortModule?.default ?? ortModule;
+
+    // Configure runtime once
+    ort.env.wasm.wasmPaths =
+      "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.17.3/dist/";
+    ort.env.wasm.numThreads = 1;
+
+    return ort;
+  })();
+
+  return ortPromise;
+}
+
+async function loadSessionOnce() {
+  if (sessionSingleton) return sessionSingleton;
+  if (sessionPromise) return sessionPromise;
+
+  sessionPromise = (async () => {
+    const ort = await loadOrtOnce();
+
+    console.log("⏳ Loading YOLO ONNX model...");
+
+    const s = await ort.InferenceSession.create("/trio_finetuned_32.onnx", {
+      executionProviders: ["wasm"],
+    });
+
+    console.log("✅ Model loaded:", s.inputNames, "→", s.outputNames);
+    sessionSingleton = s;
+    return s;
+  })();
+
+  return sessionPromise;
+}
 export function useDetector() {
-  const [session, setSession] = useState(null);
+  const [session, setSession] = useState(sessionSingleton);
 
   useEffect(() => {
-    const loadModel = async () => {
-      // Dynamically import ONNX Runtime from CDN
-      if (!ort) {
-        try {
-          const ortModule = await import('https://cdn.jsdelivr.net/npm/onnxruntime-web@1.17.3/dist/esm/ort.min.js');
-          ort = ortModule;
-        } catch (error) {
-          console.error("Failed to load ONNX Runtime:", error);
-          return;
-        }
-      }
+    let alive = true;
 
-      console.log("⏳ Loading YOLO ONNX model...");
+    // If already loaded, sync state and skip
+    if (sessionSingleton) {
+      setSession(sessionSingleton);
+      return;
+    }
 
-      // Set WASM file path to CDN location
-      ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.17.3/dist/';
-      ort.env.wasm.numThreads = 1;
+    // Load once (cached promise)
+    loadSessionOnce()
+      .then((s) => {
+        if (alive) setSession(s);
+      })
+      .catch((e) => console.error("Failed to load model:", e));
 
-      try {
-        // Model file is in public/ folder, served from root in Vite
-        const newSession = await ort.InferenceSession.create("/trio_finetuned_32.onnx", {
-          executionProviders: ["wasm"],
-        });
-        console.log("✅ Model loaded:", newSession.inputNames, "→", newSession.outputNames);
-        setSession(newSession);
-      } catch (error) {
-        console.error("Failed to load model:", error);
-      }
+    return () => {
+      alive = false;
     };
-
-    loadModel();
   }, []);
 
   const detect = async (imageElement, canvasRef, drawAROverlay) => {

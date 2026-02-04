@@ -1,203 +1,216 @@
-import { useRef, useEffect, useState } from 'react';
-import { useCamera, Camera } from './components/camera/Camera';
-import { useDetector, BUILDING_CLASSES } from './components/ai/Detector';
-import { drawAROverlay } from './components/ar/AROverlay';
+import { useRef, useEffect, useState } from "react";
+import { useCamera, Camera } from "./components/camera/Camera";
+import { useDetector, BUILDING_CLASSES } from "./components/ai/Detector";
+import { drawAROverlay } from "./components/ar/AROverlay";
+import { useGeolocation } from "./hooks/useGeolocation";
+import { isNearLandmark } from "./geolocation";
 
-function App() {
+const EMPIRE_STATE = { lat: 40.748817, lng: -73.985428 };
+const RADIUS_M = 5000; // tune later
+
+export default function App() {
   const canvasRef = useRef(null);
-  const animationFrameRef = useRef(null);
-  const detectionFrameRef = useRef(null);
-  const frameCountRef = useRef(0);
   const isDetectingRef = useRef(false);
+
   const [lastDetections, setLastDetections] = useState([]);
 
-  // Detection rate: detect every N frames (2 = ~30 FPS, 3 = ~20 FPS, 5 = ~12 FPS)
-  const DETECTION_INTERVAL = 3;
-
-  const { videoRef, streamRef, isRunning, startWebcam, stopWebcam } = useCamera();
+  const { videoRef, streamRef, isRunning, startWebcam, stopWebcam } =
+    useCamera();
   const { session, detect } = useDetector();
 
-  // Separate video rendering loop (runs at full speed for smooth video)
+  /* ==============================
+     GEOLOCATION GATING
+  ============================== */
+
+  const { coords, loading: geoLoading, error: geoError } = useGeolocation();
+
+  const near = (() => {
+    if (!coords) return null;
+    return isNearLandmark(
+      {
+        lat: coords.latitude,
+        lng: coords.longitude,
+        accuracy: coords.accuracy,
+      },
+      EMPIRE_STATE,
+      RADIUS_M
+    );
+  })();
+
+  /* ==============================
+     SYNC CANVAS SIZE TO VIDEO
+  ============================== */
+
   useEffect(() => {
-    if (!isRunning || !videoRef.current || !canvasRef.current) {
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
-        animationFrameRef.current = null;
-      }
-      return;
-    }
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    if (!video || !canvas) return;
 
-    const renderVideo = () => {
-      if (!videoRef.current || !canvasRef.current) return;
+    const onMeta = () => {
+      canvas.width = video.videoWidth || 640;
+      canvas.height = video.videoHeight || 480;
+    };
 
-      const ctx = canvasRef.current.getContext("2d");
-      const video = videoRef.current;
-      const iw = video.videoWidth || 640;
-      const ih = video.videoHeight || 480;
+    video.addEventListener("loadedmetadata", onMeta);
+    return () => video.removeEventListener("loadedmetadata", onMeta);
+  }, [isRunning, videoRef]);
 
-      // Only resize if dimensions changed - use actual video dimensions
-      if (canvasRef.current.width !== iw || canvasRef.current.height !== ih) {
-        canvasRef.current.width = iw;
-        canvasRef.current.height = ih;
-        // Update CSS to maintain aspect ratio dynamically
-        const aspectRatio = iw / ih;
-        canvasRef.current.style.aspectRatio = `${aspectRatio}`;
-      }
+  /* ==============================
+     OVERLAY DRAW LOOP
+     (boxes only, NOT video)
+  ============================== */
 
-      // Clear and draw video frame
+  useEffect(() => {
+    if (!isRunning || !canvasRef.current) return;
+
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext("2d");
+
+    let rafId;
+
+    const drawOverlay = () => {
+      const iw = canvas.width || 640;
+      const ih = canvas.height || 480;
+
       ctx.clearRect(0, 0, iw, ih);
-      ctx.drawImage(video, 0, 0, iw, ih);
 
-      // Redraw detection boxes and AR overlay on top (so they persist)
       if (lastDetections.length > 0) {
-        // Scale font and line width based on canvas size for mobile
         const scale = Math.min(iw / 640, ih / 480);
-        const lineWidth = Math.max(2, 3 * scale);
-        const fontSize = Math.max(14, 18 * scale);
-        
-        // Draw boxes
-        ctx.lineWidth = lineWidth;
-        ctx.strokeStyle = "red";
-        ctx.fillStyle = "red";
-        ctx.font = `${fontSize}px monospace`;
+        ctx.lineWidth = Math.max(2, 3 * scale);
+        ctx.font = `${Math.max(14, 18 * scale)}px monospace`;
 
-        for (const detection of lastDetections) {
-          const { box, confidence, label } = detection;
-          const { x1, y1, x2, y2 } = box;
+        for (const d of lastDetections) {
+          const { x1, y1, x2, y2 } = d.box;
+
+          ctx.strokeStyle = "red";
+          ctx.fillStyle = "red";
+
           ctx.strokeRect(x1, y1, x2 - x1, y2 - y1);
 
-          const labelText = `${label} ${(confidence * 100).toFixed(1)}%`;
-          const textWidth = ctx.measureText(labelText).width;
+          const label = `${d.label} ${(d.confidence * 100).toFixed(1)}%`;
+          const textWidth = ctx.measureText(label).width;
+
           ctx.fillRect(x1, y1 - 20, textWidth + 8, 20);
           ctx.fillStyle = "white";
-          ctx.fillText(labelText, x1 + 4, y1 - 4);
-          ctx.fillStyle = "red";
+          ctx.fillText(label, x1 + 4, y1 - 4);
         }
 
-        // Draw AR overlay on top
-        drawAROverlay(ctx, lastDetections.map(d => [d.box.x1, d.box.y1, d.box.x2, d.box.y2, d.confidence, d.classId]));
+        drawAROverlay(
+          ctx,
+          lastDetections.map((d) => [
+            d.box.x1,
+            d.box.y1,
+            d.box.x2,
+            d.box.y2,
+            d.confidence,
+            d.classId,
+          ])
+        );
       }
 
-      animationFrameRef.current = requestAnimationFrame(renderVideo);
+      rafId = requestAnimationFrame(drawOverlay);
     };
 
-    renderVideo();
+    rafId = requestAnimationFrame(drawOverlay);
+    return () => cancelAnimationFrame(rafId);
+  }, [isRunning, lastDetections]);
 
-    return () => {
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
-        animationFrameRef.current = null;
-      }
-    };
-  }, [isRunning, videoRef, lastDetections]);
+  /* ==============================
+     DETECTION LOOP
+     (interval, NOT RAF)
+  ============================== */
 
-  // Detection loop (runs at lower frequency)
   useEffect(() => {
-    if (!isRunning || !session || !videoRef.current) {
-      isDetectingRef.current = false;
-      frameCountRef.current = 0;
-      if (detectionFrameRef.current) {
-        cancelAnimationFrame(detectionFrameRef.current);
-        detectionFrameRef.current = null;
-      }
-      return;
-    }
+    if (!isRunning || !session) return;
 
-    const runDetection = async () => {
-      if (!streamRef.current || !videoRef.current || !canvasRef.current) return;
+    const DETECT_EVERY_MS = 150; // ~6-7 fps inference
 
-      frameCountRef.current++;
-
-      // Skip frames - only detect every N frames
-      if (frameCountRef.current % DETECTION_INTERVAL !== 0) {
-        detectionFrameRef.current = requestAnimationFrame(runDetection);
-        return;
-      }
-
-      // Prevent stacking detection requests - wait for current detection to finish
-      if (isDetectingRef.current) {
-        detectionFrameRef.current = requestAnimationFrame(runDetection);
-        return;
-      }
+    const id = setInterval(async () => {
+      if (isDetectingRef.current) return;
+      if (!videoRef.current) return;
 
       isDetectingRef.current = true;
 
       try {
-        // Run detection - don't draw, just get results
         const detections = await detect(videoRef.current, canvasRef, null);
-        
-        // Convert detections to format with labels - only show top 1 detection
-        // Also filter by confidence (should already be filtered, but double-check)
-        const formattedDetections = detections
-          .filter(([x1, y1, x2, y2, conf, classId]) => conf >= 0.6) // Ensure 60%+ confidence
-          .slice(0, 1) // Only keep top 1 detection
+
+        const formatted = detections
+          .filter(([x1, y1, x2, y2, conf]) => conf >= 0.6)
+          .slice(0, 1)
           .map(([x1, y1, x2, y2, conf, classId]) => ({
             box: { x1, y1, x2, y2 },
             confidence: conf,
-            classId: classId,
-            label: classId !== undefined ? (BUILDING_CLASSES[classId] || `Building ${classId}`) : 'Unknown'
+            classId,
+            label:
+              classId !== undefined
+                ? BUILDING_CLASSES[classId] || `Building ${classId}`
+                : "Unknown",
           }));
-        
-        setLastDetections(formattedDetections);
-      } catch (error) {
-        console.error("Detection error:", error);
+
+        setLastDetections(formatted);
+      } catch (e) {
+        console.error(e);
       } finally {
         isDetectingRef.current = false;
-        // Continue loop after detection completes
-        detectionFrameRef.current = requestAnimationFrame(runDetection);
       }
-    };
+    }, DETECT_EVERY_MS);
 
-    runDetection();
-
-    return () => {
-      isDetectingRef.current = false;
-      frameCountRef.current = 0;
-      if (detectionFrameRef.current) {
-        cancelAnimationFrame(detectionFrameRef.current);
-        detectionFrameRef.current = null;
-      }
-    };
+    return () => clearInterval(id);
   }, [isRunning, session, detect]);
 
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      stopWebcam();
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
-      }
-    };
-  }, []);
+  /* ==============================
+     UI
+  ============================== */
+
+  const canStart =
+    !!session && !isRunning && !geoLoading && !geoError && !!near?.ok;
+
+  const handleStart = async () => {
+    if (!coords || !near?.ok) return;
+    await startWebcam();
+  };
 
   return (
     <div className="bg-gray-900 text-gray-100 font-sans text-center pt-4 sm:pt-8 min-h-screen pb-4">
-      <h1 className="text-2xl sm:text-3xl mb-4 sm:mb-6 px-4">🏙️ Building Detector</h1>
-      <Camera videoRef={videoRef} />
-      <div className="px-4 flex justify-center">
-        <canvas 
-          ref={canvasRef} 
-          width="640" 
-          height="480" 
-          className="rounded-lg block my-2 sm:my-4 w-full sm:w-auto sm:max-w-2xl h-auto"
-          style={{ maxWidth: '100%', maxHeight: '70vh', objectFit: 'contain' }}
-        />
+      {/* Status */}
+      <div className="px-4 text-sm text-gray-200 mb-2">
+        {geoLoading && <div>Getting location…</div>}
+        {geoError && <div className="text-red-300">Location error: {geoError}</div>}
+        {coords && near && (
+          <div>
+            Distance: {Math.round(near.distance)}m · Accuracy: ±
+            {Math.round(coords.accuracy)}m ·{" "}
+            {near.ok ? "✅ Near landmark" : `❌ ${near.reason}`}
+          </div>
+        )}
       </div>
 
-      <div className="mt-4 sm:mt-5 px-4 flex flex-col sm:flex-row gap-3 sm:gap-0 justify-center items-center">
+      <h1 className="text-2xl sm:text-3xl mb-4">🏙️ Building Detector</h1>
+
+      {/* VIDEO + OVERLAY */}
+      <div className="flex justify-center">
+        <div className="relative w-full sm:max-w-2xl">
+          <Camera videoRef={videoRef} />
+          <canvas
+            ref={canvasRef}
+            className="absolute inset-0 w-full h-full pointer-events-none"
+          />
+        </div>
+      </div>
+
+      <div className="mt-4 flex gap-3 justify-center">
         <button
-          id="startCam"
-          onClick={startWebcam}
-          disabled={!session || isRunning}
-          className="w-full sm:w-auto sm:mx-2 px-6 sm:px-4 py-3 sm:py-2.5 text-lg sm:text-base rounded-md border-none bg-blue-500 text-white cursor-pointer active:bg-blue-600 hover:bg-blue-400 disabled:bg-gray-600 disabled:cursor-not-allowed transition-colors touch-manipulation"
+          onClick={handleStart}
+          disabled={!canStart}
+          className="px-4 py-2 bg-blue-500 rounded disabled:bg-gray-600"
         >
           Start Webcam
         </button>
+
         <button
-          id="stopCam"
           onClick={stopWebcam}
           disabled={!isRunning}
-          className="w-full sm:w-auto sm:mx-2 px-6 sm:px-4 py-3 sm:py-2.5 text-lg sm:text-base rounded-md border-none bg-blue-500 text-white cursor-pointer active:bg-blue-600 hover:bg-blue-400 disabled:bg-gray-600 disabled:cursor-not-allowed transition-colors touch-manipulation"
+          className="px-4 py-2 bg-blue-500 rounded disabled:bg-gray-600"
         >
           Stop Webcam
         </button>
@@ -205,5 +218,3 @@ function App() {
     </div>
   );
 }
-
-export default App;
