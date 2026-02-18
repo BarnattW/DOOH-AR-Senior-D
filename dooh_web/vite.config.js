@@ -8,6 +8,12 @@ export default defineConfig({
   server: {
     port: 8000,
     open: true,
-    https: true
-  }
+    https: false,
+    proxy: {
+      "/api/detect": {
+        target: process.env.DETECT_API_BACKEND,
+        changeOrigin: true,
+      },
+    },
+  },
 })
