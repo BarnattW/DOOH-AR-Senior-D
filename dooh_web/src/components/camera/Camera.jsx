@@ -15,6 +15,7 @@ export function useCamera() {
           facingMode: "environment", // 'environment' = rear camera, 'user' = front camera
           width: { ideal: 1280 },
           height: { ideal: 720 },
+          frameRate: { ideal: 30, min: 24 }, // smoother camera feed
         },
       });
       streamRef.current = stream;
@@ -84,7 +85,12 @@ export function Camera({ videoRef }) {
       muted
       playsInline
       className="w-full sm:max-w-2xl h-auto rounded-lg"
-      style={{ maxHeight: "70vh", objectFit: "contain" }}
+      style={{
+        maxHeight: "70vh",
+        objectFit: "contain",
+        transform: "translateZ(0)", // GPU layer for smoother playback
+        willChange: "transform",
+      }}
     />
   );
 }
