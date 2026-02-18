@@ -11,8 +11,10 @@ const RADIUS_M = 5000; // tune later
 export default function App() {
   const canvasRef = useRef(null);
   const isDetectingRef = useRef(false);
+  const lastDetectionsRef = useRef([]);
 
   const [lastDetections, setLastDetections] = useState([]);
+  const [mockLocation, setMockLocation] = useState(false);
 
   const { videoRef, streamRef, isRunning, startWebcam, stopWebcam } =
     useCamera();
@@ -22,7 +24,7 @@ export default function App() {
      GEOLOCATION GATING
   ============================== */
 
-  const { coords, loading: geoLoading, error: geoError } = useGeolocation();
+  const { coords, loading: geoLoading, error: geoError } = useGeolocation(mockLocation);
 
   const near = (() => {
     if (!coords) return null;
@@ -56,30 +58,30 @@ export default function App() {
   }, [isRunning, videoRef]);
 
   /* ==============================
-     OVERLAY DRAW LOOP
-     (boxes only, NOT video)
+     OVERLAY DRAW LOOP (frame-based, synced to video)
   ============================== */
 
   useEffect(() => {
-    if (!isRunning || !canvasRef.current) return;
+    if (!isRunning || !canvasRef.current || !videoRef.current) return;
 
+    const video = videoRef.current;
     const canvas = canvasRef.current;
     const ctx = canvas.getContext("2d");
-
-    let rafId;
+    let frameId;
 
     const drawOverlay = () => {
+      const detections = lastDetectionsRef.current;
       const iw = canvas.width || 640;
       const ih = canvas.height || 480;
 
       ctx.clearRect(0, 0, iw, ih);
 
-      if (lastDetections.length > 0) {
+      if (detections.length > 0) {
         const scale = Math.min(iw / 640, ih / 480);
         ctx.lineWidth = Math.max(2, 3 * scale);
         ctx.font = `${Math.max(14, 18 * scale)}px monospace`;
 
-        for (const d of lastDetections) {
+        for (const d of detections) {
           const { x1, y1, x2, y2 } = d.box;
 
           ctx.strokeStyle = "red";
@@ -97,7 +99,7 @@ export default function App() {
 
         drawAROverlay(
           ctx,
-          lastDetections.map((d) => [
+          detections.map((d) => [
             d.box.x1,
             d.box.y1,
             d.box.x2,
@@ -108,12 +110,29 @@ export default function App() {
         );
       }
 
-      rafId = requestAnimationFrame(drawOverlay);
+      // Frame-based: sync to video frames when available, else RAF
+      if (typeof video.requestVideoFrameCallback === "function") {
+        frameId = video.requestVideoFrameCallback(drawOverlay);
+      } else {
+        frameId = requestAnimationFrame(drawOverlay);
+      }
     };
 
-    rafId = requestAnimationFrame(drawOverlay);
-    return () => cancelAnimationFrame(rafId);
-  }, [isRunning, lastDetections]);
+    // Start loop
+    if (typeof video.requestVideoFrameCallback === "function") {
+      frameId = video.requestVideoFrameCallback(drawOverlay);
+    } else {
+      frameId = requestAnimationFrame(drawOverlay);
+    }
+
+    return () => {
+      if (typeof video.cancelVideoFrameCallback === "function") {
+        video.cancelVideoFrameCallback(frameId);
+      } else {
+        cancelAnimationFrame(frameId);
+      }
+    };
+  }, [isRunning]);
 
   /* ==============================
      DETECTION LOOP
@@ -147,6 +166,7 @@ export default function App() {
                 : "Unknown",
           }));
 
+        lastDetectionsRef.current = formatted;
         setLastDetections(formatted);
       } catch (e) {
         console.error(e);
@@ -172,6 +192,19 @@ export default function App() {
 
   return (
     <div className="bg-gray-900 text-gray-100 font-sans text-center pt-4 sm:pt-8 min-h-screen pb-4">
+      {/* Mock location toggle */}
+      <div className="px-4 flex items-center justify-center gap-2 mb-2">
+        <label className="flex items-center gap-2 cursor-pointer text-sm text-gray-300">
+          <input
+            type="checkbox"
+            checked={mockLocation}
+            onChange={(e) => setMockLocation(e.target.checked)}
+            className="rounded"
+          />
+          Use mock location (for local testing)
+        </label>
+      </div>
+
       {/* Status */}
       <div className="px-4 text-sm text-gray-200 mb-2">
         {geoLoading && <div>Getting location…</div>}
@@ -189,11 +222,15 @@ export default function App() {
 
       {/* VIDEO + OVERLAY */}
       <div className="flex justify-center">
-        <div className="relative w-full sm:max-w-2xl">
+        <div
+          className="relative w-full sm:max-w-2xl overflow-hidden"
+          style={{ transform: "translateZ(0)", willChange: "transform" }}
+        >
           <Camera videoRef={videoRef} />
           <canvas
             ref={canvasRef}
             className="absolute inset-0 w-full h-full pointer-events-none"
+            style={{ transform: "translateZ(0)" }}
           />
         </div>
       </div>
