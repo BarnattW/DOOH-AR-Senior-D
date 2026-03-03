@@ -2,6 +2,11 @@ import { useRef, useEffect, useState } from "react";
 import { useCamera, Camera } from "./components/camera/Camera";
 import { useDetector, BUILDING_CLASSES } from "./components/ai/Detector";
 import { drawAROverlay } from "./components/ar/AROverlay";
+import {
+  HtmlAROverlay,
+  DEFAULT_IMAGE,
+  DEFAULT_ANIMATED_IMAGE,
+} from "./components/ar/HtmlAROverlay";
 import { useGeolocation } from "./hooks/useGeolocation";
 import { isNearLandmark } from "./geolocation";
 
@@ -15,6 +20,12 @@ export default function App() {
 
   const [lastDetections, setLastDetections] = useState([]);
   const [mockLocation, setMockLocation] = useState(false);
+  const [overlayMode, setOverlayMode] = useState("color");
+  const [overlayImageUrl, setOverlayImageUrl] = useState(DEFAULT_IMAGE);
+  const [overlayAnimatedUrl, setOverlayAnimatedUrl] = useState(
+    DEFAULT_ANIMATED_IMAGE
+  );
+  const [frameSize, setFrameSize] = useState({ width: 0, height: 0 });
 
   const { videoRef, streamRef, isRunning, startWebcam, stopWebcam } =
     useCamera();
@@ -49,8 +60,11 @@ export default function App() {
     if (!video || !canvas) return;
 
     const onMeta = () => {
-      canvas.width = video.videoWidth || 640;
-      canvas.height = video.videoHeight || 480;
+      const width = video.videoWidth || 640;
+      const height = video.videoHeight || 480;
+      canvas.width = width;
+      canvas.height = height;
+      setFrameSize({ width, height });
     };
 
     video.addEventListener("loadedmetadata", onMeta);
@@ -232,6 +246,14 @@ export default function App() {
             className="absolute inset-0 w-full h-full pointer-events-none"
             style={{ transform: "translateZ(0)" }}
           />
+          <HtmlAROverlay
+            detections={lastDetections}
+            frameWidth={frameSize.width}
+            frameHeight={frameSize.height}
+            mode={overlayMode}
+            imageUrl={overlayImageUrl}
+            animatedUrl={overlayAnimatedUrl}
+          />
         </div>
       </div>
 
@@ -251,6 +273,77 @@ export default function App() {
         >
           Stop Webcam
         </button>
+      </div>
+
+      <div className="mt-3 px-4 flex flex-wrap items-center justify-center gap-2 text-sm">
+        <button
+          onClick={() => setOverlayMode("color")}
+          className={`px-3 py-1 rounded border ${
+            overlayMode === "color"
+              ? "bg-cyan-500 border-cyan-300"
+              : "bg-gray-700 border-gray-500"
+          }`}
+        >
+          Color Overlay
+        </button>
+        <button
+          onClick={() => setOverlayMode("image")}
+          className={`px-3 py-1 rounded border ${
+            overlayMode === "image"
+              ? "bg-cyan-500 border-cyan-300"
+              : "bg-gray-700 border-gray-500"
+          }`}
+        >
+          Image Overlay
+        </button>
+        <button
+          onClick={() => setOverlayMode("animated-image")}
+          className={`px-3 py-1 rounded border ${
+            overlayMode === "animated-image"
+              ? "bg-cyan-500 border-cyan-300"
+              : "bg-gray-700 border-gray-500"
+          }`}
+        >
+          Animated Image
+        </button>
+        <button
+          onClick={() => setOverlayMode("pulse")}
+          className={`px-3 py-1 rounded border ${
+            overlayMode === "pulse"
+              ? "bg-cyan-500 border-cyan-300"
+              : "bg-gray-700 border-gray-500"
+          }`}
+        >
+          Pulse FX
+        </button>
+        <button
+          onClick={() => setOverlayMode("cube-3d")}
+          className={`px-3 py-1 rounded border ${
+            overlayMode === "cube-3d"
+              ? "bg-cyan-500 border-cyan-300"
+              : "bg-gray-700 border-gray-500"
+          }`}
+        >
+          3D Cube
+        </button>
+        {overlayMode === "image" && (
+          <input
+            type="url"
+            value={overlayImageUrl}
+            onChange={(e) => setOverlayImageUrl(e.target.value)}
+            placeholder="https://your-image-url"
+            className="px-2 py-1 rounded bg-gray-800 border border-gray-600 text-gray-100 w-full sm:w-96"
+          />
+        )}
+        {overlayMode === "animated-image" && (
+          <input
+            type="url"
+            value={overlayAnimatedUrl}
+            onChange={(e) => setOverlayAnimatedUrl(e.target.value)}
+            placeholder="https://your-gif-or-webp-url"
+            className="px-2 py-1 rounded bg-gray-800 border border-gray-600 text-gray-100 w-full sm:w-96"
+          />
+        )}
       </div>
     </div>
   );
