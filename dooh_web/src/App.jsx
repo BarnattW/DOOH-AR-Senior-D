@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { Camera, useCamera } from "./components/camera/Camera";
-import { useDetector, BUILDING_CLASSES } from "./components/ai/Detector";
+import { useDetector as useOldDetector } from "./components/ai/DetectorOld";
+import { useDetector } from "./components/ai/Detector";
 import { useGeolocation } from "./hooks/useGeolocation";
 import { useDetectionLoop } from "./hooks/useDetectionLoop";
 import { useOverlayLoop } from "./hooks/useOverlayLoop";
@@ -19,7 +20,7 @@ export default function App() {
   const [mockLocation, setMockLocation] = useState(false);
 
   const { videoRef, isRunning, startWebcam, stopWebcam } = useCamera();
-  const { session, detect } = useDetector();
+  const { session, detect } = useOldDetector();
   const { coords, loading: geoLoading, error: geoError } = useGeolocation(mockLocation);
 
   const near = coords
