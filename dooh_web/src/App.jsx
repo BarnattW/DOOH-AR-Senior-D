@@ -20,7 +20,7 @@ export default function App() {
   const [mockLocation, setMockLocation] = useState(false);
 
   const { videoRef, isRunning, startWebcam, stopWebcam } = useCamera();
-  const { session, detect } = useOldDetector();
+  const { session, detect } = useDetector();
   const { coords, loading: geoLoading, error: geoError } = useGeolocation(mockLocation);
 
   const near = coords
