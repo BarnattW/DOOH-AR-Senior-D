@@ -1,26 +1,29 @@
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import { Camera, useCamera } from "./components/camera/Camera";
-import { useDetector as useOldDetector } from "./components/ai/DetectorOld";
 import { useDetector } from "./components/ai/Detector";
 import { useGeolocation } from "./hooks/useGeolocation";
 import { useDetectionLoop } from "./hooks/useDetectionLoop";
-import { useOverlayLoop } from "./hooks/useOverlayLoop";
-import { useCanvasSync } from "./hooks/useCanvasSync";
+import { usePixiOverlay } from "./hooks/usePixiOverlay";
 import { isNearLandmark } from "./util/geolocation";
+import { FILTERS, DEFAULT_FILTER_ID } from "./filters";
 import LocationStatus from "./components/LocationStatus";
 import CameraControls from "./components/CameraControls";
+import FilterPicker from "./components/FilterPicker";
 
 const EMPIRE_STATE = { lat: 40.748817, lng: -73.985428 };
 const RADIUS_M = 5000;
 
 export default function App() {
-  const canvasRef = useRef(null);
+  // ── Refs ──────────────────────────────────────────────────────────────────
+  const pixiCanvasRef     = useRef(null);
   const lastDetectionsRef = useRef([]);
-  const [lastDetections, setLastDetections] = useState([]); // for any react components that need to access the last detections
-  const [mockLocation, setMockLocation] = useState(false);
 
+  // ── Camera ────────────────────────────────────────────────────────────────
   const { videoRef, isRunning, startWebcam, stopWebcam } = useCamera();
+
+  // ── Detection ─────────────────────────────────────────────────────────────
   const { session, detect } = useDetector();
+  const [mockLocation, setMockLocation] = useState(false);
   const { coords, loading: geoLoading, error: geoError } = useGeolocation(mockLocation);
 
   const near = coords
@@ -31,23 +34,33 @@ export default function App() {
       )
     : null;
 
-  // Sync canvas dimensions to video
-  useCanvasSync({ videoRef, canvasRef, isRunning });
+  // ── Active filter — state drives UI, ref drives render loop (zero re-renders) ──
+  const [activeFilterId, setActiveFilterId] = useState(DEFAULT_FILTER_ID);
+  const activeFilterRef = useRef(FILTERS.find(f => f.id === DEFAULT_FILTER_ID));
 
-  // Draw bounding boxes + AR overlay on each video frame
-  useOverlayLoop({ canvasRef, videoRef, isRunning, lastDetectionsRef });
+  useEffect(() => {
+    const f = FILTERS.find(f => f.id === activeFilterId);
+    if (f) activeFilterRef.current = f;
+  }, [activeFilterId]);
 
-  // Run inference on an interval
+  // ── PixiJS overlay ────────────────────────────────────────────────────────
+  usePixiOverlay({
+    canvasRef: pixiCanvasRef,
+    videoRef,
+    isRunning,
+    lastDetectionsRef,
+    activeFilterRef,
+  });
+
+  // ── Detection loop ────────────────────────────────────────────────────────
   useDetectionLoop({
     isRunning,
     session,
     videoRef,
-    canvasRef,
+    canvasRef: pixiCanvasRef,
     detect,
     onDetections: (formatted) => {
-      console.log(formatted)
       lastDetectionsRef.current = formatted;
-      setLastDetections(formatted);
     },
   });
 
@@ -77,18 +90,26 @@ export default function App() {
 
       <h1 className="text-2xl sm:text-3xl mb-4">🏙️ Building Detector</h1>
 
-      {/* Video + overlay */}
+      {/* Camera container */}
       <div className="flex justify-center">
         <div
-          className="relative w-full sm:max-w-2xl overflow-hidden"
-          style={{ transform: "translateZ(0)", willChange: "transform" }}
+          className="relative w-full sm:max-w-2xl overflow-hidden rounded-lg bg-black"
+          style={{ transform: 'translateZ(0)', willChange: 'transform' }}
         >
-          <Camera videoRef={videoRef} />
+          {/* Hidden video — kept in DOM as PixiJS VideoResource texture source */}
+          <Camera videoRef={videoRef} hidden />
+
+          {/* PixiJS renders video + pixel effects + decorations here */}
           <canvas
-            ref={canvasRef}
-            className="absolute inset-0 w-full h-full pointer-events-none"
-            style={{ transform: "translateZ(0)" }}
+            ref={pixiCanvasRef}
+            className="w-full h-auto block"
+            style={{ maxHeight: '70vh' }}
           />
+
+          {/* Filter picker pinned to bottom of camera view */}
+          {isRunning && (
+            <FilterPicker activeId={activeFilterId} onSelect={setActiveFilterId} />
+          )}
         </div>
       </div>
 

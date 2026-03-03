@@ -77,20 +77,16 @@ export function useCamera() {
   };
 }
 
-export function Camera({ videoRef }) {
+// hidden=true keeps the element in the DOM (needed as a texture source for PixiJS)
+// but removes it from the visual layout.
+export function Camera({ videoRef, hidden }) {
   return (
     <video
       ref={videoRef}
       autoPlay
       muted
       playsInline
-      className="w-full sm:max-w-2xl h-auto rounded-lg"
-      style={{
-        maxHeight: "70vh",
-        objectFit: "contain",
-        transform: "translateZ(0)", // GPU layer for smoother playback
-        willChange: "transform",
-      }}
+      style={hidden ? { display: 'none' } : undefined}
     />
   );
 }
