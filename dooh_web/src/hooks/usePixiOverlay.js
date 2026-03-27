@@ -17,24 +17,30 @@
  *   getFilters()               → PIXI.Filter[]  (called once, result cached by id)
  *   animate(filters, time)     → void           (called every frame to animate uniforms)
  *   draw(gfx, textContainer, detections, time, screen) → void
+ *
+ * Canvas ownership
+ * ─────────────────
+ *  PixiJS creates and owns its canvas element. We append it to a container <div>
+ *  (containerRef). On cleanup we call destroy(true) which removes the canvas from
+ *  the DOM. This avoids the "Invalid value of 0 passed to checkMaxIfStatementsInShader"
+ *  crash that occurs when PixiJS tries to re-init on a canvas with a stale WebGL context.
  */
 import { useEffect, useRef } from 'react';
 import * as PIXI from 'pixi.js';
 
-export function usePixiOverlay({ canvasRef, videoRef, isRunning, lastDetectionsRef, activeFilterRef }) {
+export function usePixiOverlay({ canvasRef: containerRef, videoRef, isRunning, lastDetectionsRef, activeFilterRef }) {
   const appRef         = useRef(null);
   const filterCacheRef = useRef({});
 
   useEffect(() => {
-    if (!isRunning || !canvasRef.current || !videoRef.current) return;
+    if (!isRunning || !containerRef.current || !videoRef.current) return;
 
-    const canvas = canvasRef.current;
-    const video  = videoRef.current;
+    const container = containerRef.current;
+    const video     = videoRef.current;
 
     function init() {
-      // ── Create PixiJS application ──────────────────────────────────────────
+      // ── Create PixiJS application (no `view` — PixiJS owns the canvas) ──────
       const app = new PIXI.Application({
-        view:            canvas,
         width:           video.videoWidth  || 640,
         height:          video.videoHeight || 480,
         antialias:       true,
@@ -44,6 +50,9 @@ export function usePixiOverlay({ canvasRef, videoRef, isRunning, lastDetectionsR
       });
       appRef.current   = app;
       filterCacheRef.current = {};
+
+      // Attach the PixiJS-created canvas to our container div
+      container.appendChild(app.view);
 
       // ── Video texture (auto-updates from the live stream) ─────────────────
       const videoResource = new PIXI.VideoResource(video, { autoPlay: false });
@@ -122,9 +131,11 @@ export function usePixiOverlay({ canvasRef, videoRef, isRunning, lastDetectionsR
 
     return () => {
       if (appRef.current) {
-        appRef.current.destroy(false); // false → keep the canvas DOM element
+        // destroy(true) removes the canvas from the DOM, ensuring a fresh
+        // WebGL context on the next mount (avoids checkMaxIfStatementsInShader crash).
+        appRef.current.destroy(true);
         appRef.current = null;
       }
     };
-  }, [isRunning, canvasRef, videoRef, lastDetectionsRef, activeFilterRef]);
+  }, [isRunning, containerRef, videoRef, lastDetectionsRef, activeFilterRef]);
 }

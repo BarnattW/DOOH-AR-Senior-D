@@ -31,6 +31,7 @@ def train_model():
     fp16_path = model.export(
         format="onnx",
         device=0,
+        opset=12
         half=True,
         simplify=True,
         dynamic=False,

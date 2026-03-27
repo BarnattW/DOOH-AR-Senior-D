@@ -19,7 +19,7 @@ export default function App() {
   const lastDetectionsRef = useRef([]);
 
   // ── Camera ────────────────────────────────────────────────────────────────
-  const { videoRef, isRunning, startWebcam, stopWebcam } = useCamera();
+  const { videoRef, isRunning, startWebcam, stopWebcam, zoom, setZoom, zoomCaps } = useCamera();
 
   // ── Detection ─────────────────────────────────────────────────────────────
   const { session, detect } = useDetector();
@@ -99,11 +99,15 @@ export default function App() {
           {/* Hidden video — kept in DOM as PixiJS VideoResource texture source */}
           <Camera videoRef={videoRef} hidden />
 
-          {/* PixiJS renders video + pixel effects + decorations here */}
-          <canvas
+          {/* PixiJS appends its own canvas here — see usePixiOverlay */}
+          <div
             ref={pixiCanvasRef}
-            className="w-full h-auto block"
-            style={{ maxHeight: '70vh' }}
+            className="relative w-full bg-black overflow-hidden flex items-center justify-center"
+            style={{
+              height: '70vh',
+              transform: !zoomCaps && zoom !== 1 ? `scale(${zoom})` : undefined,
+              transformOrigin: 'center center',
+            }}
           />
 
           {/* Filter picker pinned to bottom of camera view */}
@@ -118,6 +122,9 @@ export default function App() {
         onStop={stopWebcam}
         canStart={canStart}
         isRunning={isRunning}
+        zoom={zoom}
+        onZoom={setZoom}
+        zoomCaps={zoomCaps}
       />
     </div>
   );
