@@ -4,45 +4,40 @@ export function useCamera() {
   const videoRef = useRef(null);
   const streamRef = useRef(null);
   const [isRunning, setIsRunning] = useState(false);
+  const [zoom, setZoomState] = useState(1);
+  // { min, max } if hardware zoom is supported, null otherwise
+  const [zoomCaps, setZoomCaps] = useState(null);
 
   const startWebcam = async () => {
     if (isRunning || streamRef.current) return;
     try {
-      // Request rear camera (back camera) on mobile devices
-      // Use ideal width/height to get better aspect ratio on mobile
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
-          facingMode: "environment", // 'environment' = rear camera, 'user' = front camera
+          facingMode: "environment",
           width: { ideal: 1280 },
           height: { ideal: 720 },
-          frameRate: { ideal: 30, min: 24 }, // smoother camera feed
+          frameRate: { ideal: 30, min: 24 },
         },
       });
       streamRef.current = stream;
 
-      // Apply 3x zoom if supported (mobile devices)
+      // Detect hardware zoom capability
       const videoTrack = stream.getVideoTracks()[0];
       if (videoTrack && videoTrack.getCapabilities) {
-        const capabilities = videoTrack.getCapabilities();
-        if (capabilities.zoom) {
-          const maxZoom = capabilities.zoom.max || 1;
-          const zoomLevel = Math.min(3.0, maxZoom); // 3x zoom, but don't exceed max
-          try {
-            await videoTrack.applyConstraints({
-              advanced: [{ zoom: zoomLevel }],
-            });
-            console.log(`Applied ${zoomLevel}x zoom`);
-          } catch (zoomErr) {
-            console.warn("Could not apply zoom:", zoomErr);
-          }
+        const caps = videoTrack.getCapabilities();
+        if (caps.zoom) {
+          setZoomCaps({ min: caps.zoom.min ?? 1, max: caps.zoom.max ?? 1 });
+        } else {
+          setZoomCaps(null);
         }
       }
-      
+
+      setZoomState(1);
+
       const videoEl = videoRef.current;
       if (videoEl) {
         videoEl.srcObject = stream;
         videoEl.playsInline = true;
-
         videoEl.onloadedmetadata = async () => {
           try {
             await videoEl.play();
@@ -59,6 +54,8 @@ export function useCamera() {
 
   const stopWebcam = () => {
     setIsRunning(false);
+    setZoomState(1);
+    setZoomCaps(null);
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((t) => t.stop());
       streamRef.current = null;
@@ -68,12 +65,33 @@ export function useCamera() {
     }
   };
 
+  const setZoom = async (level) => {
+    const clamped = Math.max(1, level);
+    setZoomState(clamped);
+
+    // Apply hardware zoom if supported
+    if (streamRef.current) {
+      const videoTrack = streamRef.current.getVideoTracks()[0];
+      if (videoTrack && zoomCaps) {
+        const hwLevel = Math.min(Math.max(clamped, zoomCaps.min), zoomCaps.max);
+        try {
+          await videoTrack.applyConstraints({ advanced: [{ zoom: hwLevel }] });
+        } catch (e) {
+          console.warn("Could not apply hardware zoom:", e);
+        }
+      }
+    }
+  };
+
   return {
     videoRef,
     streamRef,
     isRunning,
     startWebcam,
     stopWebcam,
+    zoom,
+    setZoom,
+    zoomCaps,
   };
 }
 
