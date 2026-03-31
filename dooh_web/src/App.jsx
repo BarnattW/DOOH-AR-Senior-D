@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect } from "react";
 import { Camera, useCamera } from "./components/camera/Camera";
-import { useDetector } from "./components/ai/Detector";
+import { useDetector } from "./components/ai/DetectorOld";
 import { useGeolocation } from "./hooks/useGeolocation";
 import { useDetectionLoop } from "./hooks/useDetectionLoop";
 import { usePixiOverlay } from "./hooks/usePixiOverlay";

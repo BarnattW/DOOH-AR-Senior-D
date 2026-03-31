@@ -13,6 +13,8 @@ export function usePixiOverlay({ canvasRef: containerRef, videoRef, isRunning, l
     const container = containerRef.current;
     const video = videoRef.current;
     let cancelled = false;
+    let dirLight = null;
+    let pointLight = null;
 
     async function ensureFilterPreloaded(filter) {
       if (!filter?.preload) return;
@@ -73,6 +75,20 @@ export function usePixiOverlay({ canvasRef: containerRef, videoRef, isRunning, l
         PIXI3D.Camera.main.fieldOfView = 60;
       }
 
+      dirLight = new PIXI3D.Light();
+      dirLight.type = PIXI3D.LightType.directional;
+      dirLight.intensity = 0.7;
+      dirLight.position.set(-4, 7, -4);
+      dirLight.rotationQuaternion.setEulerAngles(45, 45, 0);
+
+      pointLight = new PIXI3D.Light();
+      pointLight.type = PIXI3D.LightType.point;
+      pointLight.intensity = 12;
+      pointLight.range = 40;
+      pointLight.position.set(1, 0, 3);
+
+      PIXI3D.LightingEnvironment.main.lights.push(dirLight, pointLight);
+
       const decorGfx = new PIXI.Graphics();
       app.stage.addChild(decorGfx);
 
@@ -127,6 +143,11 @@ export function usePixiOverlay({ canvasRef: containerRef, videoRef, isRunning, l
 
     return () => {
       cancelled = true;
+      if (PIXI3D.LightingEnvironment.main) {
+        PIXI3D.LightingEnvironment.main.lights = PIXI3D.LightingEnvironment.main.lights.filter(
+          (light) => light !== dirLight && light !== pointLight
+        );
+      }
       if (appRef.current) {
         appRef.current.destroy(true);
         appRef.current = null;
