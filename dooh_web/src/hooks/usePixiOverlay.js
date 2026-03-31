@@ -1,101 +1,96 @@
-/**
- * usePixiOverlay — replaces useOverlayLoop.
- *
- * Architecture
- * ─────────────
- *  The <video> element is kept hidden as the media source.
- *  A single PixiJS canvas is the only visible element.
- *
- *  Stage layers (bottom → top):
- *   0  bgSprite      — full-frame video, no effects
- *   1  maskGfx       — Graphics rectangle used as clip mask for effectSprite
- *   2  effectSprite  — same video texture, masked to bounding box, active filter applied
- *   3  decorGfx      — PIXI.Graphics decorations, cleared each frame
- *   4  textContainer — PIXI.Text nodes, cleared each frame
- *
- * Each filter module may export:
- *   getFilters()               → PIXI.Filter[]  (called once, result cached by id)
- *   animate(filters, time)     → void           (called every frame to animate uniforms)
- *   draw(gfx, textContainer, detections, time, screen) → void
- *
- * Canvas ownership
- * ─────────────────
- *  PixiJS creates and owns its canvas element. We append it to a container <div>
- *  (containerRef). On cleanup we call destroy(true) which removes the canvas from
- *  the DOM. This avoids the "Invalid value of 0 passed to checkMaxIfStatementsInShader"
- *  crash that occurs when PixiJS tries to re-init on a canvas with a stale WebGL context.
- */
 import { useEffect, useRef } from 'react';
 import * as PIXI from 'pixi.js';
+import * as PIXI3D from 'pixi3d/pixi7';
 
 export function usePixiOverlay({ canvasRef: containerRef, videoRef, isRunning, lastDetectionsRef, activeFilterRef }) {
-  const appRef         = useRef(null);
+  const appRef = useRef(null);
   const filterCacheRef = useRef({});
+  const preloadCacheRef = useRef({});
 
   useEffect(() => {
     if (!isRunning || !containerRef.current || !videoRef.current) return;
 
     const container = containerRef.current;
-    const video     = videoRef.current;
+    const video = videoRef.current;
+    let cancelled = false;
+
+    async function ensureFilterPreloaded(filter) {
+      if (!filter?.preload) return;
+
+      const cachedPromise = preloadCacheRef.current[filter.id];
+      if (cachedPromise) {
+        await cachedPromise;
+        return;
+      }
+
+      const preloadPromise = Promise.resolve(filter.preload()).catch((error) => {
+        console.error(`Failed to preload filter "${filter.id}"`, error);
+      });
+
+      preloadCacheRef.current[filter.id] = preloadPromise;
+      await preloadPromise;
+    }
 
     function init() {
-      // ── Create PixiJS application (no `view` — PixiJS owns the canvas) ──────
+      if (cancelled) return;
+
       const app = new PIXI.Application({
-        width:           video.videoWidth  || 640,
-        height:          video.videoHeight || 480,
-        antialias:       true,
-        resolution:      1,
-        autoDensity:     false,
+        width: video.videoWidth || 640,
+        height: video.videoHeight || 480,
+        antialias: true,
+        resolution: 1,
+        autoDensity: false,
         backgroundColor: 0x000000,
       });
-      appRef.current   = app;
+
+      appRef.current = app;
       filterCacheRef.current = {};
 
-      // Attach the PixiJS-created canvas to our container div
       container.appendChild(app.view);
 
-      // ── Video texture (auto-updates from the live stream) ─────────────────
       const videoResource = new PIXI.VideoResource(video, { autoPlay: false });
-      const baseTex       = new PIXI.BaseTexture(videoResource);
-      const videoTex      = new PIXI.Texture(baseTex);
+      const baseTex = new PIXI.BaseTexture(videoResource);
+      const videoTex = new PIXI.Texture(baseTex);
 
-      const W = app.screen.width;
-      const H = app.screen.height;
+      const width = app.screen.width;
+      const height = app.screen.height;
 
-      // Layer 0: background
       const bgSprite = new PIXI.Sprite(videoTex);
-      bgSprite.width  = W;
-      bgSprite.height = H;
+      bgSprite.width = width;
+      bgSprite.height = height;
       app.stage.addChild(bgSprite);
 
-      // Layer 1+2: effect (masked copy of the same texture)
       const maskGfx = new PIXI.Graphics();
-      const effectSprite  = new PIXI.Sprite(videoTex);
-      effectSprite.width  = W;
-      effectSprite.height = H;
-      effectSprite.mask   = maskGfx;
+      const effectSprite = new PIXI.Sprite(videoTex);
+      effectSprite.width = width;
+      effectSprite.height = height;
+      effectSprite.mask = maskGfx;
       app.stage.addChild(maskGfx);
       app.stage.addChild(effectSprite);
 
-      // Layer 3: vector decorations
+      const scene3d = app.stage.addChild(new PIXI3D.Container3D());
+      if (PIXI3D.Camera.main) {
+        PIXI3D.Camera.main.fieldOfView = 60;
+      }
+
       const decorGfx = new PIXI.Graphics();
       app.stage.addChild(decorGfx);
 
-      // Layer 4: text
       const textContainer = new PIXI.Container();
       app.stage.addChild(textContainer);
 
-      // ── Render loop ────────────────────────────────────────────────────────
       app.ticker.add(() => {
-        const time       = app.ticker.lastTime / 1000;
+        const time = app.ticker.lastTime / 1000;
         const detections = lastDetectionsRef.current;
-        const filter     = activeFilterRef.current;
+        const filter = activeFilterRef.current;
 
-        // -- Pixel filter on building region ----------------------------------
+        void ensureFilterPreloaded(filter);
+
         if (filter.getFilters) {
           if (!filterCacheRef.current[filter.id]) {
             filterCacheRef.current[filter.id] = filter.getFilters();
           }
+
           const filters = filterCacheRef.current[filter.id];
           effectSprite.filters = filters;
           if (filter.animate) filter.animate(filters, time);
@@ -103,7 +98,6 @@ export function usePixiOverlay({ canvasRef: containerRef, videoRef, isRunning, l
           effectSprite.filters = [];
         }
 
-        // -- Update bounding-box mask -----------------------------------------
         maskGfx.clear();
         if (detections.length > 0) {
           const { x1, y1, x2, y2 } = detections[0].box;
@@ -112,17 +106,19 @@ export function usePixiOverlay({ canvasRef: containerRef, videoRef, isRunning, l
           maskGfx.endFill();
         }
 
-        // -- Decorations ------------------------------------------------------
+        scene3d.removeChildren();
+        if (filter.draw3d && detections.length > 0) {
+          filter.draw3d(scene3d, detections, time, app.screen);
+        }
+
         decorGfx.clear();
         textContainer.removeChildren();
-
         if (filter.draw && detections.length > 0) {
           filter.draw(decorGfx, textContainer, detections, time, app.screen);
         }
       });
     }
 
-    // Video may already have dimensions if camera was started before this effect runs
     if (video.videoWidth) {
       init();
     } else {
@@ -130,9 +126,8 @@ export function usePixiOverlay({ canvasRef: containerRef, videoRef, isRunning, l
     }
 
     return () => {
+      cancelled = true;
       if (appRef.current) {
-        // destroy(true) removes the canvas from the DOM, ensuring a fresh
-        // WebGL context on the next mount (avoids checkMaxIfStatementsInShader crash).
         appRef.current.destroy(true);
         appRef.current = null;
       }

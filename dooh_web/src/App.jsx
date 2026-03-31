@@ -64,10 +64,10 @@ export default function App() {
     },
   });
 
-  const canStart = !!session && !isRunning && !geoLoading && !geoError && !!near?.ok;
+  const canStart = !isRunning;
+  const detectionReady = !!session && !geoLoading && !geoError && !!near?.ok;
 
   const handleStart = async () => {
-    if (!coords || !near?.ok) return;
     await startWebcam();
   };
 

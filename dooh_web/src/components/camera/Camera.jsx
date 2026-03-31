@@ -10,6 +10,16 @@ export function useCamera() {
 
   const startWebcam = async () => {
     if (isRunning || streamRef.current) return;
+
+    if (!navigator.mediaDevices?.getUserMedia) {
+      const message = window.isSecureContext
+        ? "Camera access is not available in this browser."
+        : "Camera access requires a secure origin (localhost or HTTPS).";
+      console.error(message);
+      alert(message);
+      return;
+    }
+
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
@@ -48,7 +58,13 @@ export function useCamera() {
       }
     } catch (err) {
       console.error("Error accessing webcam: ", err);
-      alert("Failed to access webcam. Please check permissions and try again.");
+      const message =
+        err?.name === "NotAllowedError"
+          ? "Camera permission was denied. Please allow camera access in your browser settings and try again."
+          : err?.name === "NotFoundError"
+            ? "No camera was found on this device."
+            : "Failed to access webcam. Please check permissions and try again.";
+      alert(message);
     }
   };
 
