@@ -1,10 +1,7 @@
 import { useState, useEffect } from "react";
+import { BUILDING_CLASSES } from "../../constants/buildings";
 
-export const BUILDING_CLASSES = [
-  "Hudson Yards - The Edge",
-  "Empire State Building",
-  "WTC",
-];
+export { BUILDING_CLASSES };
 
 // ---- API CONFIG (ENV ONLY) ----
 // Vite requires env vars to start with VITE_
