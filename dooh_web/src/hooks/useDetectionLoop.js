@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { BUILDING_CLASSES } from "../components/ai/Detector";
+import { BUILDING_CLASSES } from "../constants/buildings";
 
 const DETECT_EVERY_MS = 50; // ~30fps — viable with WebGPU, falls back gracefully on WASM
 const MIN_CONFIDENCE = 0.6;
