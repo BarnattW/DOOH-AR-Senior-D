@@ -5,6 +5,9 @@ import mkcert from "vite-plugin-mkcert"
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react(), mkcert()],
+  optimizeDeps: {
+    include: ["onnxruntime-web"],
+  },
   server: {
     port: 8000,
     open: true,
