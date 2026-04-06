@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect } from "react";
 import { Camera, useCamera } from "./components/camera/Camera";
-import { useDetector } from "./components/ai/DetectorOld";
+import { useDetectorMode } from "./hooks/useDetectorMode";
 import { useGeolocation } from "./hooks/useGeolocation";
 import { useDetectionLoop } from "./hooks/useDetectionLoop";
 import { usePixiOverlay } from "./hooks/usePixiOverlay";
@@ -21,8 +21,9 @@ export default function App() {
   // ── Camera ────────────────────────────────────────────────────────────────
   const { videoRef, isRunning, startWebcam, stopWebcam, zoom, setZoom, zoomCaps } = useCamera();
 
-  // ── Detection ─────────────────────────────────────────────────────────────
-  const { session, detect } = useDetector();
+  // ── Detection: API (Vercel proxy) vs local ONNX ───────────────────────────
+  const [detectionMode, setDetectionMode] = useState("api"); // "api" | "local"
+  const { session, detect } = useDetectorMode(detectionMode);
   const [mockLocation, setMockLocation] = useState(false);
   const { coords, loading: geoLoading, error: geoError } = useGeolocation(mockLocation);
 
@@ -73,16 +74,41 @@ export default function App() {
 
   return (
     <div className="bg-gray-900 text-gray-100 font-sans text-center pt-4 sm:pt-8 min-h-screen pb-4">
-      {/* Mock location toggle */}
-      <div className="px-4 flex items-center justify-center gap-2 mb-2">
-        <label className="flex items-center gap-2 cursor-pointer text-sm text-gray-300">
+      {/* Detection mode + mock location */}
+      <div className="px-4 flex flex-col sm:flex-row items-center justify-center gap-3 mb-2 text-sm">
+        <div className="flex items-center gap-2 text-gray-300">
+          <span className="text-gray-400">Detection:</span>
+          <label className="flex items-center gap-1.5 cursor-pointer">
+            <input
+              type="radio"
+              name="detectionMode"
+              checked={detectionMode === "api"}
+              onChange={() => setDetectionMode("api")}
+              disabled={isRunning}
+              className="rounded-full"
+            />
+            API
+          </label>
+          <label className="flex items-center gap-1.5 cursor-pointer">
+            <input
+              type="radio"
+              name="detectionMode"
+              checked={detectionMode === "local"}
+              onChange={() => setDetectionMode("local")}
+              disabled={isRunning}
+              className="rounded-full"
+            />
+            Local (ONNX)
+          </label>
+        </div>
+        <label className="flex items-center gap-2 cursor-pointer text-gray-300">
           <input
             type="checkbox"
             checked={mockLocation}
             onChange={(e) => setMockLocation(e.target.checked)}
             className="rounded"
           />
-          Use mock location (for local testing)
+          Mock location
         </label>
       </div>
 
