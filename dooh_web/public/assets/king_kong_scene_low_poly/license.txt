@@ -1,0 +1,11 @@
+Model Information:
+* title:	King Kong scene low poly
+* source:	https://sketchfab.com/3d-models/king-kong-scene-low-poly-acee25e2df9a4136b88fd5d182b3ef8b
+* author:	vicente betoret ferrero (https://sketchfab.com/deathcow)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "King Kong scene low poly" (https://sketchfab.com/3d-models/king-kong-scene-low-poly-acee25e2df9a4136b88fd5d182b3ef8b) by vicente betoret ferrero (https://sketchfab.com/deathcow) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
