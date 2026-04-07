@@ -22,7 +22,7 @@ export default function FilterPicker({ activeId, onSelect }) {
   }, [activeId]);
 
   return (
-    <div className="absolute bottom-0 left-0 right-0 flex flex-col items-center pb-3 pointer-events-none">
+    <div className="flex w-full flex-col items-center px-3 pointer-events-none">
       {/* Filter name toast */}
       <div
         key={toast?.key}
@@ -36,8 +36,7 @@ export default function FilterPicker({ activeId, onSelect }) {
 
       {/* Pill row */}
       <div
-        className="flex gap-2 overflow-x-auto px-3 pointer-events-auto
-                   scrollbar-hide pb-1 max-w-full"
+        className="flex max-w-full gap-2 overflow-x-auto px-1 pb-1 pointer-events-auto scrollbar-hide"
         style={{ WebkitOverflowScrolling: 'touch' }}
       >
         {FILTERS.map(f => (
