@@ -22,7 +22,7 @@ export default function FilterPicker({ activeId, onSelect }) {
   }, [activeId]);
 
   return (
-    <div className="absolute bottom-[8.75rem] left-0 right-0 flex flex-col items-center px-3 pb-3 pointer-events-none sm:bottom-[9.5rem]">
+    <div className="flex w-full flex-col items-center px-3 pointer-events-none">
       {/* Filter name toast */}
       <div
         key={toast?.key}

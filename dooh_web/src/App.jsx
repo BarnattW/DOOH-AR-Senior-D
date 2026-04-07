@@ -148,10 +148,10 @@ export default function App() {
             </div>
           </div>
 
-          <div className="absolute inset-x-0 bottom-0 z-10">
-          {isRunning && (
-            <FilterPicker activeId={activeFilterId} onSelect={setActiveFilterId} />
-          )}
+          <div className="absolute inset-x-0 bottom-0 z-10 flex flex-col items-center gap-3">
+            {isRunning && (
+              <FilterPicker activeId={activeFilterId} onSelect={setActiveFilterId} />
+            )}
 
             <CameraControls
               onStart={handleStart}
