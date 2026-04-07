@@ -13,13 +13,31 @@
 }
 
 /* Mobile-friendly styles */
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+}
+
 * {
   -webkit-tap-highlight-color: transparent;
+  box-sizing: border-box;
 }
 
 body {
   overscroll-behavior: none;
   -webkit-overflow-scrolling: touch;
+  position: fixed;
+  inset: 0;
+  touch-action: manipulation;
+  background: #000;
+}
+
+#root {
+  position: relative;
 }
 
 canvas {
