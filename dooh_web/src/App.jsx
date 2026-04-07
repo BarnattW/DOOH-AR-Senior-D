@@ -73,8 +73,8 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-black text-white">
-      <div className="mx-auto flex min-h-screen w-full items-center justify-center sm:px-4 sm:py-6">
+    <div className="h-screen overflow-hidden bg-black text-white supports-[height:100dvh]:h-[100dvh]">
+      <div className="mx-auto flex h-full w-full items-center justify-center overflow-hidden sm:px-4 sm:py-6">
         <div
           className="relative isolate w-full overflow-hidden bg-black sm:max-w-2xl sm:rounded-[32px] sm:border sm:border-white/10 sm:shadow-2xl sm:shadow-black/50"
           style={{ transform: "translateZ(0)", willChange: "transform" }}
