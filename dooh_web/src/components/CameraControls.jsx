@@ -1,13 +1,22 @@
-export default function CameraControls({ onStart, onStop, canStart, isRunning, zoom, onZoom, zoomCaps }) {
+export default function CameraControls({
+  onStart,
+  onStop,
+  canStart,
+  isRunning,
+  zoom,
+  onZoom,
+  zoomCaps,
+  className = "",
+}) {
   const MIN_ZOOM = 1;
   const MAX_ZOOM = zoomCaps ? zoomCaps.max : 5;
 
   return (
-    <div className="mt-4 px-6 pb-4 flex flex-col items-center gap-4">
+    <div className={`flex flex-col items-center gap-4 ${className}`}>
 
       {/* Zoom row — only when camera is active */}
       {isRunning && (
-        <div className="flex items-center gap-3 w-full max-w-xs">
+        <div className="flex items-center gap-3 w-full max-w-xs rounded-full border border-white/15 bg-black/35 px-4 py-2 backdrop-blur-md">
           <button
             onClick={() => onZoom(Math.max(MIN_ZOOM, parseFloat((zoom - 0.5).toFixed(1))))}
             disabled={zoom <= MIN_ZOOM}
@@ -48,7 +57,7 @@ export default function CameraControls({ onStart, onStop, canStart, isRunning, z
             onClick={onStop}
             aria-label="Stop camera"
             className="w-[68px] h-[68px] rounded-full border-[3px] border-white/80
-              flex items-center justify-center
+              bg-black/20 backdrop-blur-sm flex items-center justify-center
               active:scale-95 transition-transform duration-100"
           >
             <span className="w-[22px] h-[22px] bg-white rounded-[4px] block" />
@@ -60,7 +69,7 @@ export default function CameraControls({ onStart, onStop, canStart, isRunning, z
             disabled={!canStart}
             aria-label="Start camera"
             className="w-[68px] h-[68px] rounded-full border-[3px] border-white/80
-              flex items-center justify-center
+              bg-black/20 backdrop-blur-sm flex items-center justify-center
               disabled:opacity-25 active:scale-95 transition-transform duration-100"
           >
             <span className="w-[54px] h-[54px] bg-white rounded-full block" />
