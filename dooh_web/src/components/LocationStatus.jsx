@@ -1,6 +1,6 @@
 export default function LocationStatus({ coords, near, geoLoading, geoError }) {
     return (
-      <div className="px-4 text-sm text-gray-200 mb-2">
+      <div className="text-sm text-gray-200">
         {geoLoading && <div>Getting location…</div>}
         {geoError && <div className="text-red-300">Location error: {geoError}</div>}
         {coords && near && (
