@@ -1,12 +1,9 @@
-import { useState, useEffect } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { BUILDING_CLASSES } from "../../constants/buildings";
 
 export { BUILDING_CLASSES };
 
-// ---- API CONFIG (ENV ONLY) ----
-// Vite requires env vars to start with VITE_
-const DETECT_URL = import.meta.env.VITE_DETECT_URL; // required
-const API_KEY = import.meta.env.VITE_DETECT_KEY || ""; // optional
+const DETECT_WS_URL = import.meta.env.VITE_DETECT_WS_URL;
 
 async function frameToJpegBlob(imageElement, quality = 0.7) {
   const iw = imageElement.videoWidth || imageElement.width;
@@ -25,76 +22,162 @@ async function frameToJpegBlob(imageElement, quality = 0.7) {
 
 export function useDetector() {
   const [session, setSession] = useState(null);
+  const wsRef = useRef(null);
+  const isUnmountedRef = useRef(false);
+  const connectPromiseRef = useRef(null);
+  const pendingRequestRef = useRef(null);
+  const reconnectAttemptRef = useRef(0);
+  const nextReconnectAtRef = useRef(0);
 
-  useEffect(() => {
-    if (!DETECT_URL) {
-      console.error("Missing VITE_DETECT_URL env var.");
-      return;
-    }
-    setSession({ provider: "server", url: DETECT_URL });
+  const getReconnectDelayMs = useCallback((attempt) => {
+    // 250ms, 500ms, 1000ms, 2000ms, 4000ms (max 5s)
+    return Math.min(5000, 250 * 2 ** Math.max(0, attempt - 1));
   }, []);
 
-  const detect = async (imageElement, canvasRef, drawAROverlay) => {
-    if (!imageElement || !DETECT_URL) return [];
+  const rejectPending = useCallback((error) => {
+    if (!pendingRequestRef.current) return;
+    pendingRequestRef.current.reject(error);
+    pendingRequestRef.current = null;
+  }, []);
+
+  const connect = useCallback(() => {
+    if (!DETECT_WS_URL) {
+      console.error("Missing websocket detection URL.");
+      return Promise.resolve(null);
+    }
+
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      return Promise.resolve(wsRef.current);
+    }
+
+    if (connectPromiseRef.current) {
+      return connectPromiseRef.current;
+    }
+
+    const now = Date.now();
+    if (now < nextReconnectAtRef.current) {
+      return Promise.resolve(null);
+    }
+
+    connectPromiseRef.current = new Promise((resolve, reject) => {
+      const ws = new WebSocket(DETECT_WS_URL);
+      ws.binaryType = "arraybuffer";
+
+      const handleOpen = () => {
+        if (isUnmountedRef.current) {
+          ws.close();
+          resolve(null);
+          return;
+        }
+
+        console.log("[Detect] WebSocket connected →", DETECT_WS_URL);
+        wsRef.current = ws;
+        setSession({ provider: "websocket", url: DETECT_WS_URL });
+        reconnectAttemptRef.current = 0;
+        nextReconnectAtRef.current = 0;
+        connectPromiseRef.current = null;
+        resolve(ws);
+      };
+
+      const handleMessage = (event) => {
+        if (!pendingRequestRef.current) return;
+
+        try {
+          const parsed = typeof event.data === "string" ? JSON.parse(event.data) : event.data;
+          pendingRequestRef.current.resolve(Array.isArray(parsed) ? parsed : []);
+        } catch (error) {
+          pendingRequestRef.current.reject(error);
+        } finally {
+          pendingRequestRef.current = null;
+        }
+      };
+
+      const handleClose = (event) => {
+        if (wsRef.current === ws) {
+          wsRef.current = null;
+        }
+        setSession(null);
+        connectPromiseRef.current = null;
+        if (!isUnmountedRef.current) {
+          reconnectAttemptRef.current += 1;
+          const waitMs = getReconnectDelayMs(reconnectAttemptRef.current);
+          nextReconnectAtRef.current = Date.now() + waitMs;
+          console.warn(
+            "[Detect] WebSocket closed:",
+            `code=${event.code}`,
+            `reason=${event.reason || "none"}`,
+            `wasClean=${event.wasClean}`,
+            `retryIn=${waitMs}ms`
+          );
+        }
+        rejectPending(new Error("Detection websocket closed."));
+      };
+
+      const handleError = () => {
+        const error = new Error("Detection websocket failed.");
+        console.error("[Detect] WebSocket error event.");
+        if (ws.readyState !== WebSocket.OPEN) {
+          connectPromiseRef.current = null;
+          reject(error);
+        }
+        rejectPending(error);
+      };
+
+      ws.addEventListener("open", handleOpen, { once: true });
+      ws.addEventListener("message", handleMessage);
+      ws.addEventListener("close", handleClose);
+      ws.addEventListener("error", handleError);
+    });
+
+    return connectPromiseRef.current;
+  }, [getReconnectDelayMs, rejectPending]);
+
+  useEffect(() => {
+    isUnmountedRef.current = false;
+    void connect();
+
+    return () => {
+      isUnmountedRef.current = true;
+      setSession(null);
+      rejectPending(new Error("Detection websocket closed."));
+
+      if (wsRef.current) {
+        wsRef.current.close();
+        wsRef.current = null;
+      }
+
+      connectPromiseRef.current = null;
+    };
+  }, [connect, rejectPending]);
+
+  const detect = useCallback(async (imageElement) => {
+    if (!imageElement || !DETECT_WS_URL) return [];
+
+    const ws = await connect();
+    if (!ws || ws.readyState !== WebSocket.OPEN) return [];
+    if (pendingRequestRef.current) return [];
 
     const blob = await frameToJpegBlob(imageElement, 0.7);
     if (!blob) return [];
 
-    const fd = new FormData();
-    fd.append("file", blob, "frame.jpg");
-
-    const headers = {};
-    if (API_KEY) headers["x-api-key"] = API_KEY;
-
+    const bytes = await blob.arrayBuffer();
     const reqStart = performance.now();
-    console.log("[Detect] Request →", DETECT_URL, "| blob:", `${(blob.size / 1024).toFixed(1)}KB`);
+    console.log("[Detect] WebSocket →", DETECT_WS_URL, "| blob:", `${(blob.size / 1024).toFixed(1)}KB`);
 
-    let filtered;
     try {
-      const res = await fetch(DETECT_URL, {
-        method: "POST",
-        headers,
-        body: fd,
+      const response = await new Promise((resolve, reject) => {
+        pendingRequestRef.current = { resolve, reject };
+        ws.send(bytes);
       });
 
       const duration = (performance.now() - reqStart).toFixed(0);
-      if (!res.ok) {
-        const text = await res.text();
-        console.warn("[Detect] Response ✗", res.status, `(${duration}ms)`, text || res.statusText);
-        return [];
-      }
-
-      filtered = await res.json();
-      console.log("[Detect] Response ✓", res.status, `(${duration}ms) | detections:`, filtered?.length ?? 0, filtered);
-    } catch (e) {
-      console.error("[Detect] Request failed:", e.message || e);
+      console.log("[Detect] Response ✓", `(${duration}ms) | detections:`, response?.length ?? 0, response);
+      return Array.isArray(response) ? response : [];
+    } catch (error) {
+      console.error("[Detect] WebSocket request failed:", error?.message || error);
       return [];
     }
-
-    if (drawAROverlay && canvasRef?.current && filtered.length > 0) {
-      const ctx = canvasRef.current.getContext("2d");
-      ctx.lineWidth = 3;
-      ctx.strokeStyle = "red";
-      ctx.fillStyle = "red";
-      ctx.font = "18px monospace";
-
-      for (const [x1, y1, x2, y2, conf, classId] of filtered) {
-        ctx.strokeRect(x1, y1, x2 - x1, y2 - y1);
-        const buildingName = BUILDING_CLASSES[classId] || `Building ${classId}`;
-        const label = `${buildingName} ${(conf * 100).toFixed(1)}%`;
-        const textWidth = ctx.measureText(label).width;
-
-        ctx.fillRect(x1, y1 - 20, textWidth + 8, 20);
-        ctx.fillStyle = "white";
-        ctx.fillText(label, x1 + 4, y1 - 4);
-        ctx.fillStyle = "red";
-      }
-
-      drawAROverlay(ctx, filtered);
-    }
-
-    return filtered;
-  };
+  }, [connect]);
 
   return { session, detect };
 }
