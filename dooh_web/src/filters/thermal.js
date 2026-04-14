@@ -34,7 +34,7 @@ export function getFilters() {
   return [new PIXI.Filter(null, FRAG, { uTime: 0 })];
 }
 
-export function animate(filters, time) {
+export function animate(filters, time, detections = []) {
   filters[0].uniforms.uTime = time;
 }
 

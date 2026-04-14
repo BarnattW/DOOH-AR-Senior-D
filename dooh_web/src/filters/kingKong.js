@@ -49,14 +49,21 @@ export function draw3d(scene3d, detections, time) {
   const { x1, y1, x2, y2 } = det.box;
   const cx = (x1 + x2) / 2;
   const cy = (y1 + y2) / 2;
+  const w = x2 - x1;
+  const h = y2 - y1;
+  const boxMin = Math.min(w, h);
 
   if (!PIXI3D.Camera.main || !kingKongGltf) return;
 
   const worldPos = PIXI3D.Camera.main.screenToWorld(cx, cy - MODEL_OFFSET_Y, MODEL_DEPTH);
   if (!worldPos) return;
 
+  // Scale model based on bounding box size
+  const scaleMultiplier = Math.max(0.5, Math.min(3, boxMin / 200));
+  const modelScale = MODEL_SCALE * scaleMultiplier;
+
   const model = scene3d.addChild(PIXI3D.Model.from(kingKongGltf));
   model.position.set(worldPos.x, worldPos.y, worldPos.z);
-  model.scale.set(MODEL_SCALE);
+  model.scale.set(modelScale);
   model.rotationQuaternion.setEulerAngles(0, time * 20, 0);
 }

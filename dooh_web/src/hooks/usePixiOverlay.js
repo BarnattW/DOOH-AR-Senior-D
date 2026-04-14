@@ -109,7 +109,7 @@ export function usePixiOverlay({ canvasRef: containerRef, videoRef, isRunning, l
 
           const filters = filterCacheRef.current[filter.id];
           effectSprite.filters = filters;
-          if (filter.animate) filter.animate(filters, time);
+          if (filter.animate) filter.animate(filters, time, detections);
         } else {
           effectSprite.filters = [];
         }
