@@ -24,10 +24,20 @@ export function getFilters() {
   return [cm, glow];
 }
 
-export function animate(filters, time) {
+export function animate(filters, time, detections = []) {
   const glow = filters[1];
   const pulse = (Math.sin(time * 2.5) + 1) / 2;
-  glow.outerStrength = 2.5 + pulse * 3;
+  
+  // Scale glow effect based on detection box size
+  let glowScale = 1;
+  if (detections.length > 0) {
+    const { x1, y1, x2, y2 } = detections[0].box;
+    const boxMin = Math.min(x2 - x1, y2 - y1);
+    glowScale = Math.max(0.3, Math.min(2, boxMin / 150)); // Scale between 0.3x and 2x
+  }
+  
+  glow.distance = 22 * glowScale;
+  glow.outerStrength = (2.5 + pulse * 3) * glowScale;
   glow.color = pulse > 0.5 ? 0xff00ff : 0x00ffff;
 }
 

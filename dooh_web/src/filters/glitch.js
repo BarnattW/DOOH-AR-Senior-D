@@ -22,17 +22,26 @@ export function getFilters() {
   })];
 }
 
-export function animate(filters, time) {
+export function animate(filters, time, detections = []) {
   const g = filters[0];
+  
+  // Scale glitch intensity based on detection box size
+  let glitchScale = 1;
+  if (detections.length > 0) {
+    const { x1, y1, x2, y2 } = detections[0].box;
+    const boxMin = Math.min(x2 - x1, y2 - y1);
+    glitchScale = Math.max(0.4, Math.min(2, boxMin / 120)); // Scale between 0.4x and 2x
+  }
+  
   // Fire a new random tear ~3 times per second
   if (Math.random() < 0.05) {
     g.refresh();
-    g.offset  = 8 + Math.random() * 35;
+    g.offset  = (8 + Math.random() * 35) * glitchScale;
     g.slices  = 3 + Math.floor(Math.random() * 9);
   }
   // Pulse red/blue channel split
   const t = Math.sin(time * 4) * 0.5 + 0.5;
-  const split = t * 4;
+  const split = t * 4 * glitchScale;
   g.red  = [split,  split];
   g.blue = [-split, split];
 }
