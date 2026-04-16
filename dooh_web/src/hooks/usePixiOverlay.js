@@ -42,6 +42,7 @@ export function usePixiOverlay({ canvasRef: containerRef, videoRef, isRunning, l
         antialias: true,
         resolution: 1,
         autoDensity: false,
+        preserveDrawingBuffer: true,
         backgroundColor: 0x000000,
       });
 
