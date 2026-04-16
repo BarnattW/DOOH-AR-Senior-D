@@ -13,7 +13,11 @@ export function usePhotoLibrary({ canvasContainerRef, zoom, zoomCaps }) {
   }, []);
 
   const capturePhoto = async () => {
-    const sourceCanvas = canvasContainerRef.current?.querySelector("canvas");
+    const app = canvasContainerRef.current?.__pixiApp;
+    const sourceCanvas = app?.renderer?.extract?.canvas
+      ? app.renderer.extract.canvas(app.stage)
+      : canvasContainerRef.current?.querySelector("canvas");
+
     if (!sourceCanvas) return;
 
     const exportCanvas = document.createElement("canvas");
