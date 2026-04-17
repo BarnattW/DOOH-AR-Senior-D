@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>AR·DOOH — UI Examples</title>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600&family=Inter:wght@300;400;600;700&family=Playfair+Display:wght@400;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet"/>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #111;
+      font-family: Inter, sans-serif;
+      padding: 48px 32px;
+      color: #fff;
+    }
+    .page-title {
+      text-align: center;
+      font-size: 13px;
+      letter-spacing: 0.3em;
+      color: #555;
+      text-transform: uppercase;
+      margin-bottom: 48px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 40px;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+    .card {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .card-label {
+      font-size: 11px;
+      letter-spacing: 0.25em;
+      text-transform: uppercase;
+      color: #444;
+    }
+    .phone {
+      width: 100%;
+      aspect-ratio: 9/19;
+      border-radius: 32px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* ── UI 1: Tactical HUD ──────────────────────────────── */
+    .ui1 {
+      background: #020a06;
+      border: 1px solid #1a3a1a;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0;
+      padding: 0;
+    }
+    .ui1-inner {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      padding: 40px 24px;
+    }
+    .ui1-grid {
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(0,255,80,0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,255,80,0.04) 1px, transparent 1px);
+      background-size: 20px 20px;
+    }
+    .ui1-scan {
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, #00ff50, transparent);
+      animation: scan1 3s linear infinite;
+      opacity: 0.6;
+    }
+    @keyframes scan1 { 0%{top:0} 100%{top:100%} }
+    .ui1-corner {
+      position: absolute;
+      width: 20px; height: 20px;
+    }
+    .ui1-corner.tl { top: 16px; left: 16px; border-top: 2px solid #00ff50; border-left: 2px solid #00ff50; }
+    .ui1-corner.tr { top: 16px; right: 16px; border-top: 2px solid #00ff50; border-right: 2px solid #00ff50; }
+    .ui1-corner.bl { bottom: 16px; left: 16px; border-bottom: 2px solid #00ff50; border-left: 2px solid #00ff50; }
+    .ui1-corner.br { bottom: 16px; right: 16px; border-bottom: 2px solid #00ff50; border-right: 2px solid #00ff50; }
+    .ui1-badge {
+      font-family: 'Space Mono', monospace;
+      font-size: 9px;
+      color: #00ff50;
+      letter-spacing: 0.2em;
+      opacity: 0.5;
+      margin-bottom: 28px;
+    }
+    .ui1-logo {
+      font-family: 'Space Mono', monospace;
+      font-size: 26px;
+      font-weight: 700;
+      color: #00ff50;
+      letter-spacing: 0.1em;
+      text-shadow: 0 0 20px rgba(0,255,80,0.5);
+      margin-bottom: 6px;
+    }
+    .ui1-sub {
+      font-family: 'Space Mono', monospace;
+      font-size: 8px;
+      color: #00ff50;
+      letter-spacing: 0.3em;
+      opacity: 0.45;
+      text-transform: uppercase;
+      margin-bottom: 40px;
+    }
+    .ui1-reticle {
+      width: 64px; height: 64px;
+      border: 1.5px solid #00ff50;
+      border-radius: 50%;
+      position: relative;
+      margin-bottom: 40px;
+      opacity: 0.7;
+    }
+    .ui1-reticle::before, .ui1-reticle::after {
+      content: '';
+      position: absolute;
+      background: #00ff50;
+    }
+    .ui1-reticle::before { width: 1px; height: 20px; left: 50%; top: -10px; }
+    .ui1-reticle::after  { width: 20px; height: 1px; top: 50%; left: -10px; }
+    .ui1-inner-ring {
+      position: absolute;
+      inset: 10px;
+      border: 1px dashed rgba(0,255,80,0.3);
+      border-radius: 50%;
+    }
+    .ui1-btn {
+      background: transparent;
+      border: 1px solid #00ff50;
+      color: #00ff50;
+      font-family: 'Space Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 0.2em;
+      padding: 10px 28px;
+      cursor: pointer;
+      text-transform: uppercase;
+      position: relative;
+      margin-bottom: 14px;
+    }
+    .ui1-btn::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: rgba(0,255,80,0.06);
+    }
+    .ui1-skip {
+      font-family: 'Space Mono', monospace;
+      font-size: 8px;
+      color: rgba(0,255,80,0.35);
+      letter-spacing: 0.15em;
+      text-decoration: none;
+      text-transform: uppercase;
+    }
+    .ui1-status {
+      position: absolute;
+      bottom: 28px;
+      left: 0; right: 0;
+      display: flex;
+      justify-content: center;
+      gap: 16px;
+    }
+    .ui1-stat {
+      font-family: 'Space Mono', monospace;
+      font-size: 7px;
+      color: rgba(0,255,80,0.4);
+      letter-spacing: 0.15em;
+    }
+
+    /* ── UI 2: Clean Consumer ────────────────────────────── */
+    .ui2 {
+      background: #f7f8fa;
+      border: 1px solid #e5e7eb;
+    }
+    .ui2-inner {
+      width: 100%; height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 28px;
+      position: relative;
+    }
+    .ui2-icon {
+      width: 72px; height: 72px;
+      background: linear-gradient(135deg, #1a2e4a, #2a7fff);
+      border-radius: 20px;
+      display: flex; align-items: center; justify-content: center;
+      margin-bottom: 28px;
+      box-shadow: 0 8px 24px rgba(42,127,255,0.25);
+    }
+    .ui2-icon svg { width: 36px; height: 36px; }
+    .ui2-logo {
+      font-family: Inter, sans-serif;
+      font-size: 26px;
+      font-weight: 700;
+      color: #1a2e4a;
+      margin-bottom: 8px;
+      letter-spacing: -0.5px;
+    }
+    .ui2-sub {
+      font-family: Inter, sans-serif;
+      font-size: 12px;
+      color: #6b7280;
+      margin-bottom: 36px;
+      text-align: center;
+      line-height: 1.6;
+    }
+    .ui2-chips {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 36px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .ui2-chip {
+      background: #e8f0fe;
+      color: #2a7fff;
+      font-size: 10px;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 20px;
+      letter-spacing: 0.02em;
+    }
+    .ui2-btn {
+      width: 100%;
+      background: linear-gradient(135deg, #1a2e4a, #2a7fff);
+      color: #fff;
+      border: none;
+      border-radius: 14px;
+      padding: 14px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-bottom: 12px;
+      letter-spacing: 0.02em;
+      box-shadow: 0 4px 16px rgba(42,127,255,0.3);
+    }
+    .ui2-skip {
+      font-size: 12px;
+      color: #9ca3af;
+      text-decoration: none;
+    }
+    .ui2-bottom {
+      position: absolute;
+      bottom: 28px;
+      left: 28px; right: 28px;
+    }
+    .ui2-buildings {
+      display: flex;
+      justify-content: space-between;
+      padding: 12px 16px;
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+    .ui2-building {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+    .ui2-dot { width: 8px; height: 8px; border-radius: 50%; }
+    .ui2-bname { font-size: 8px; color: #9ca3af; text-align: center; }
+
+    /* ── UI 3: Cyberpunk Neon ────────────────────────────── */
+    .ui3 {
+      background: #05010f;
+      border: 1px solid #2a0a4a;
+    }
+    .ui3-inner {
+      width: 100%; height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 24px;
+      position: relative;
+      overflow: hidden;
+    }
+    .ui3-bg {
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 120% 60% at 50% 110%, rgba(168,85,247,0.15) 0%, transparent 70%),
+        radial-gradient(ellipse 80% 40% at 50% 0%, rgba(0,240,255,0.08) 0%, transparent 60%);
+    }
+    .ui3-lines {
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      height: 50%;
+      background-image: linear-gradient(rgba(168,85,247,0.06) 1px, transparent 1px);
+      background-size: 100% 18px;
+      mask-image: linear-gradient(to top, rgba(0,0,0,0.4), transparent);
+    }
+    .ui3-glyph {
+      font-family: 'Orbitron', monospace;
+      font-size: 9px;
+      letter-spacing: 0.3em;
+      color: rgba(0,240,255,0.4);
+      margin-bottom: 24px;
+      position: relative;
+    }
+    .ui3-logo {
+      font-family: 'Orbitron', monospace;
+      font-size: 22px;
+      font-weight: 900;
+      background: linear-gradient(90deg, #00f0ff, #a855f7);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      letter-spacing: 0.05em;
+      margin-bottom: 4px;
+      filter: drop-shadow(0 0 12px rgba(0,240,255,0.4));
+      position: relative;
+    }
+    .ui3-sub {
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 10px;
+      color: rgba(168,85,247,0.6);
+      letter-spacing: 0.25em;
+      text-transform: uppercase;
+      margin-bottom: 40px;
+      position: relative;
+    }
+    .ui3-hex {
+      width: 72px; height: 72px;
+      position: relative;
+      margin-bottom: 40px;
+    }
+    .ui3-hex svg { width: 100%; height: 100%; }
+    .ui3-btn {
+      width: 100%;
+      background: linear-gradient(90deg, rgba(0,240,255,0.15), rgba(168,85,247,0.15));
+      border: 1px solid rgba(0,240,255,0.4);
+      color: #00f0ff;
+      font-family: 'Orbitron', monospace;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.2em;
+      padding: 13px;
+      cursor: pointer;
+      text-transform: uppercase;
+      position: relative;
+      margin-bottom: 12px;
+      clip-path: polygon(8px 0%, 100% 0%, calc(100% - 8px) 100%, 0% 100%);
+    }
+    .ui3-skip {
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 10px;
+      color: rgba(168,85,247,0.4);
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      text-decoration: none;
+      position: relative;
+    }
+    .ui3-bottom {
+      position: absolute;
+      bottom: 24px;
+      left: 0; right: 0;
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+    }
+    .ui3-bldg {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+    .ui3-bldg-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+    }
+    .ui3-bldg-name {
+      font-family: 'Space Mono', monospace;
+      font-size: 7px;
+      opacity: 0.4;
+    }
+
+    /* ── UI 4: Editorial / Magazine ──────────────────────── */
+    .ui4 {
+      background: #faf8f4;
+      border: 1px solid #e8e4dc;
+    }
+    .ui4-inner {
+      width: 100%; height: 100%;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      overflow: hidden;
+    }
+    .ui4-top {
+      background: #1a2e4a;
+      padding: 36px 24px 28px;
+      flex-shrink: 0;
+    }
+    .ui4-eyebrow {
+      font-family: 'Space Mono', monospace;
+      font-size: 8px;
+      color: rgba(255,255,255,0.35);
+      letter-spacing: 0.3em;
+      text-transform: uppercase;
+      margin-bottom: 14px;
+    }
+    .ui4-logo {
+      font-family: 'Playfair Display', serif;
+      font-size: 30px;
+      color: #fff;
+      line-height: 1.1;
+      margin-bottom: 8px;
+    }
+    .ui4-rule {
+      width: 32px;
+      height: 2px;
+      background: #2a7fff;
+      margin-bottom: 12px;
+    }
+    .ui4-desc {
+      font-family: Inter, sans-serif;
+      font-size: 11px;
+      color: rgba(255,255,255,0.55);
+      line-height: 1.6;
+    }
+    .ui4-body {
+      flex: 1;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+    .ui4-buildings {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .ui4-bldg-card {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 12px;
+      background: #fff;
+      border-radius: 8px;
+      border: 1px solid #ede9e0;
+    }
+    .ui4-bldg-bar {
+      width: 3px;
+      height: 32px;
+      border-radius: 2px;
+      flex-shrink: 0;
+    }
+    .ui4-bldg-info { flex: 1; }
+    .ui4-bldg-name {
+      font-family: Inter, sans-serif;
+      font-size: 11px;
+      font-weight: 600;
+      color: #1a2e4a;
+    }
+    .ui4-bldg-loc {
+      font-size: 9px;
+      color: #9ca3af;
+      margin-top: 2px;
+    }
+    .ui4-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .ui4-btn {
+      background: #1a2e4a;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 13px;
+      font-family: Inter, sans-serif;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      letter-spacing: 0.01em;
+    }
+    .ui4-skip {
+      text-align: center;
+      font-size: 11px;
+      color: #9ca3af;
+      text-decoration: none;
+      font-family: Inter, sans-serif;
+      padding: 4px;
+    }
+  </style>
+</head>
+<body>
+
+<p class="page-title">AR·DOOH — UI Direction Examples</p>
+
+<div class="grid">
+
+  <!-- ── UI 1: Tactical HUD ── -->
+  <div class="card">
+    <div class="phone ui1">
+      <div class="ui1-inner">
+        <div class="ui1-grid"></div>
+        <div class="ui1-scan"></div>
+        <div class="ui1-corner tl"></div>
+        <div class="ui1-corner tr"></div>
+        <div class="ui1-corner bl"></div>
+        <div class="ui1-corner br"></div>
+
+        <div class="ui1-badge">SYS-INIT // V1.0 // AR·TACTICAL</div>
+        <div class="ui1-logo">AR·DOOH</div>
+        <div class="ui1-sub">Landmark Detection System</div>
+
+        <div class="ui1-reticle">
+          <div class="ui1-inner-ring"></div>
+        </div>
+
+        <button class="ui1-btn">Initialize Scanner</button>
+        <a href="#" class="ui1-skip">Skip Tutorial →</a>
+
+        <div class="ui1-status">
+          <span class="ui1-stat">LAT 40.748°N</span>
+          <span class="ui1-stat">|</span>
+          <span class="ui1-stat">LNG 73.985°W</span>
+          <span class="ui1-stat">|</span>
+          <span class="ui1-stat">STATUS: READY</span>
+        </div>
+      </div>
+    </div>
+    <span class="card-label">01 — Tactical HUD</span>
+  </div>
+
+  <!-- ── UI 2: Clean Consumer ── -->
+  <div class="card">
+    <div class="phone ui2">
+      <div class="ui2-inner">
+        <div class="ui2-icon">
+          <svg viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="18" cy="16" r="9" stroke="white" stroke-width="2"/>
+            <circle cx="18" cy="16" r="4" fill="white" opacity="0.6"/>
+            <line x1="18" y1="5" x2="18" y2="8" stroke="white" stroke-width="2" stroke-linecap="round"/>
+            <line x1="18" y1="24" x2="18" y2="27" stroke="white" stroke-width="2" stroke-linecap="round"/>
+            <line x1="7" y1="16" x2="10" y2="16" stroke="white" stroke-width="2" stroke-linecap="round"/>
+            <line x1="26" y1="16" x2="29" y2="16" stroke="white" stroke-width="2" stroke-linecap="round"/>
+            <rect x="8" y="27" width="20" height="3" rx="1.5" fill="white" opacity="0.4"/>
+          </svg>
+        </div>
+
+        <div class="ui2-logo">AR·DOOH</div>
+        <div class="ui2-sub">Point your camera at a NYC landmark<br/>and discover it in real-time.</div>
+
+        <div class="ui2-chips">
+          <span class="ui2-chip">One WTC</span>
+          <span class="ui2-chip">The Edge</span>
+          <span class="ui2-chip">Empire State</span>
+        </div>
+
+        <button class="ui2-btn">Get Started</button>
+        <a href="#" class="ui2-skip">Skip intro</a>
+
+        <div class="ui2-bottom">
+          <div class="ui2-buildings">
+            <div class="ui2-building">
+              <div class="ui2-dot" style="background:#00f0ff"></div>
+              <span class="ui2-bname">One<br/>WTC</span>
+            </div>
+            <div class="ui2-building">
+              <div class="ui2-dot" style="background:#ff6b00"></div>
+              <span class="ui2-bname">The<br/>Edge</span>
+            </div>
+            <div class="ui2-building">
+              <div class="ui2-dot" style="background:#a855f7"></div>
+              <span class="ui2-bname">Empire<br/>State</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <span class="card-label">02 — Clean Consumer</span>
+  </div>
+
+  <!-- ── UI 3: Cyberpunk Neon ── -->
+  <div class="card">
+    <div class="phone ui3">
+      <div class="ui3-inner">
+        <div class="ui3-bg"></div>
+        <div class="ui3-lines"></div>
+
+        <div class="ui3-glyph">// SYSTEM ONLINE //</div>
+        <div class="ui3-logo">AR·DOOH</div>
+        <div class="ui3-sub">NYC Landmark Detection</div>
+
+        <div class="ui3-hex">
+          <svg viewBox="0 0 72 72" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <polygon points="36,4 64,20 64,52 36,68 8,52 8,20" stroke="url(#hg)" stroke-width="1.5" fill="rgba(0,240,255,0.04)"/>
+            <polygon points="36,12 56,24 56,48 36,60 16,48 16,24" stroke="rgba(168,85,247,0.4)" stroke-width="1" fill="none" stroke-dasharray="4 3"/>
+            <circle cx="36" cy="36" r="10" stroke="#00f0ff" stroke-width="1.5" fill="rgba(0,240,255,0.08)"/>
+            <circle cx="36" cy="36" r="3" fill="#00f0ff" opacity="0.8"/>
+            <line x1="36" y1="26" x2="36" y2="22" stroke="#00f0ff" stroke-width="1.5"/>
+            <line x1="36" y1="46" x2="36" y2="50" stroke="#00f0ff" stroke-width="1.5"/>
+            <line x1="26" y1="36" x2="22" y2="36" stroke="#00f0ff" stroke-width="1.5"/>
+            <line x1="46" y1="36" x2="50" y2="36" stroke="#00f0ff" stroke-width="1.5"/>
+            <defs>
+              <linearGradient id="hg" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#00f0ff"/>
+                <stop offset="100%" stop-color="#a855f7"/>
+              </linearGradient>
+            </defs>
+          </svg>
+        </div>
+
+        <button class="ui3-btn">Initialize</button>
+        <a href="#" class="ui3-skip">Skip Tutorial</a>
+
+        <div class="ui3-bottom">
+          <div class="ui3-bldg">
+            <div class="ui3-bldg-dot" style="background:#00f0ff;box-shadow:0 0 6px #00f0ff"></div>
+            <span class="ui3-bldg-name" style="color:#00f0ff">WTC</span>
+          </div>
+          <div class="ui3-bldg">
+            <div class="ui3-bldg-dot" style="background:#ff6b00;box-shadow:0 0 6px #ff6b00"></div>
+            <span class="ui3-bldg-name" style="color:#ff6b00">EDGE</span>
+          </div>
+          <div class="ui3-bldg">
+            <div class="ui3-bldg-dot" style="background:#a855f7;box-shadow:0 0 6px #a855f7"></div>
+            <span class="ui3-bldg-name" style="color:#a855f7">ESB</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <span class="card-label">03 — Cyberpunk Neon</span>
+  </div>
+
+  <!-- ── UI 4: Editorial ── -->
+  <div class="card">
+    <div class="phone ui4">
+      <div class="ui4-inner">
+        <div class="ui4-top">
+          <div class="ui4-eyebrow">NYC · Landmark Detection</div>
+          <div class="ui4-logo">AR·DOOH</div>
+          <div class="ui4-rule"></div>
+          <div class="ui4-desc">Point your camera at a New York landmark and watch it come to life.</div>
+        </div>
+        <div class="ui4-body">
+          <div class="ui4-buildings">
+            <div class="ui4-bldg-card">
+              <div class="ui4-bldg-bar" style="background:#00c4cc"></div>
+              <div class="ui4-bldg-info">
+                <div class="ui4-bldg-name">One World Trade Center</div>
+                <div class="ui4-bldg-loc">Lower Manhattan</div>
+              </div>
+            </div>
+            <div class="ui4-bldg-card">
+              <div class="ui4-bldg-bar" style="background:#ff6b00"></div>
+              <div class="ui4-bldg-info">
+                <div class="ui4-bldg-name">The Edge</div>
+                <div class="ui4-bldg-loc">Hudson Yards</div>
+              </div>
+            </div>
+            <div class="ui4-bldg-card">
+              <div class="ui4-bldg-bar" style="background:#a855f7"></div>
+              <div class="ui4-bldg-info">
+                <div class="ui4-bldg-name">Empire State Building</div>
+                <div class="ui4-bldg-loc">Midtown Manhattan</div>
+              </div>
+            </div>
+          </div>
+          <div class="ui4-actions">
+            <button class="ui4-btn">Start Tutorial</button>
+            <a href="#" class="ui4-skip">Skip to Scanner</a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <span class="card-label">04 — Editorial</span>
+  </div>
+
+</div>
+</body>
+</html>

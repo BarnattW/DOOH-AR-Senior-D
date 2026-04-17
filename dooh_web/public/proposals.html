@@ -1,0 +1,815 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>AR·DOOH — Frontend Proposals</title>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@300;400;500;600;700;800&family=Playfair+Display:ital,wght@0,700;1,400&family=Space+Mono:wght@400;700&family=Bebas+Neue&family=DM+Sans:wght@300;400;500;700&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #0e0e0e;
+      color: #fff;
+      font-family: Inter, sans-serif;
+      padding: 60px 40px;
+    }
+
+    .page-header {
+      text-align: center;
+      margin-bottom: 80px;
+    }
+    .page-header h1 {
+      font-size: 11px;
+      letter-spacing: 0.4em;
+      text-transform: uppercase;
+      color: #444;
+      margin-bottom: 12px;
+    }
+    .page-header h2 {
+      font-size: 32px;
+      font-weight: 700;
+      color: #fff;
+      letter-spacing: -0.5px;
+    }
+    .page-header p {
+      font-size: 13px;
+      color: #555;
+      margin-top: 8px;
+    }
+
+    /* ── Proposal wrapper ── */
+    .proposal {
+      margin-bottom: 100px;
+    }
+    .proposal-header {
+      display: flex;
+      align-items: baseline;
+      gap: 16px;
+      margin-bottom: 32px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid #1e1e1e;
+    }
+    .proposal-num {
+      font-size: 11px;
+      letter-spacing: 0.3em;
+      color: #333;
+      text-transform: uppercase;
+    }
+    .proposal-name {
+      font-size: 22px;
+      font-weight: 700;
+      color: #fff;
+    }
+    .proposal-tag {
+      font-size: 10px;
+      color: #555;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      margin-left: auto;
+    }
+
+    .screens {
+      display: flex;
+      gap: 24px;
+      overflow-x: auto;
+      padding-bottom: 8px;
+    }
+
+    .screen-wrap {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+    .screen-label {
+      font-size: 10px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: #333;
+      text-align: center;
+    }
+
+    /* Phone frame */
+    .phone {
+      width: 240px;
+      height: 500px;
+      border-radius: 28px;
+      overflow: hidden;
+      position: relative;
+      flex-shrink: 0;
+    }
+
+    /* ════════════════════════════════════════
+       PROPOSAL A — CLEAN DARK
+    ════════════════════════════════════════ */
+    .a-welcome {
+      background: #0a0a0a;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      padding: 32px 24px; gap: 0;
+      font-family: Inter, sans-serif;
+    }
+    .a-logo-ring {
+      width: 64px; height: 64px;
+      border: 2px solid #ffffff;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      margin-bottom: 28px;
+      position: relative;
+    }
+    .a-logo-ring::before {
+      content: '';
+      position: absolute;
+      inset: 6px;
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 50%;
+    }
+    .a-logo-inner {
+      width: 10px; height: 10px;
+      background: #fff;
+      border-radius: 50%;
+    }
+    .a-title {
+      font-size: 24px;
+      font-weight: 800;
+      color: #fff;
+      letter-spacing: -0.5px;
+      margin-bottom: 6px;
+    }
+    .a-sub {
+      font-size: 10px;
+      color: rgba(255,255,255,0.3);
+      letter-spacing: 0.25em;
+      text-transform: uppercase;
+      margin-bottom: 40px;
+      text-align: center;
+    }
+    .a-buildings {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 36px;
+    }
+    .a-bldg {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 10px;
+    }
+    .a-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .a-bname { font-size: 11px; color: rgba(255,255,255,0.7); font-weight: 500; }
+    .a-btn {
+      width: 100%;
+      background: #fff;
+      color: #000;
+      border: none;
+      border-radius: 12px;
+      padding: 13px;
+      font-size: 13px;
+      font-weight: 700;
+      font-family: Inter, sans-serif;
+      cursor: pointer;
+      margin-bottom: 10px;
+    }
+    .a-skip { font-size: 11px; color: rgba(255,255,255,0.25); text-align: center; }
+
+    .a-scanner {
+      background: #111;
+      position: relative;
+      overflow: hidden;
+      font-family: Inter, sans-serif;
+    }
+    .a-cam-bg {
+      position: absolute; inset: 0;
+      background: linear-gradient(160deg, #1a1a2e 0%, #0d1117 50%, #111 100%);
+    }
+    .a-bbox {
+      position: absolute;
+      top: 120px; left: 40px; right: 40px; bottom: 160px;
+      border: 1.5px solid #fff;
+      border-radius: 4px;
+    }
+    .a-bbox-corner {
+      position: absolute;
+      width: 12px; height: 12px;
+    }
+    .a-bbox-corner.tl { top: -1px; left: -1px; border-top: 2.5px solid #fff; border-left: 2.5px solid #fff; }
+    .a-bbox-corner.tr { top: -1px; right: -1px; border-top: 2.5px solid #fff; border-right: 2.5px solid #fff; }
+    .a-bbox-corner.bl { bottom: -1px; left: -1px; border-bottom: 2.5px solid #fff; border-left: 2.5px solid #fff; }
+    .a-bbox-corner.br { bottom: -1px; right: -1px; border-bottom: 2.5px solid #fff; border-right: 2.5px solid #fff; }
+    .a-label-chip {
+      position: absolute;
+      top: 108px; left: 40px;
+      background: #fff;
+      color: #000;
+      font-size: 9px;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 4px;
+      letter-spacing: 0.05em;
+    }
+    .a-hud-tl {
+      position: absolute; top: 16px; left: 16px;
+      font-size: 9px; color: rgba(255,255,255,0.4);
+      letter-spacing: 0.15em; text-transform: uppercase;
+    }
+    .a-hud-tr {
+      position: absolute; top: 16px; right: 16px;
+      font-size: 10px; color: rgba(255,255,255,0.2);
+      font-weight: 700; letter-spacing: 0.1em;
+    }
+    .a-hud-br {
+      position: absolute; bottom: 60px; right: 16px;
+      display: flex; flex-direction: column; gap: 4px; align-items: flex-end;
+    }
+    .a-legend { display: flex; align-items: center; gap: 5px; }
+    .a-legend-dot { width: 5px; height: 5px; border-radius: 50%; }
+    .a-legend-name { font-size: 8px; color: rgba(255,255,255,0.35); }
+    .a-exit {
+      position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%);
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.12);
+      color: rgba(255,255,255,0.5);
+      font-size: 9px; font-family: Inter, sans-serif;
+      padding: 7px 20px; border-radius: 20px; cursor: pointer;
+      letter-spacing: 0.1em; text-transform: uppercase;
+    }
+    .a-confidence {
+      position: absolute;
+      top: 88px; left: 40px; right: 40px;
+      background: rgba(0,0,0,0.7);
+      border: 1px solid rgba(255,255,255,0.1);
+      padding: 8px 12px;
+      border-radius: 6px;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .a-conf-name { font-size: 10px; font-weight: 600; color: #fff; }
+    .a-conf-pct { font-size: 10px; color: rgba(255,255,255,0.4); }
+
+    /* ════════════════════════════════════════
+       PROPOSAL B — STREET / URBAN
+    ════════════════════════════════════════ */
+    .b-welcome {
+      background: #f5f0e8;
+      display: flex; flex-direction: column;
+      padding: 0;
+      font-family: Inter, sans-serif;
+      overflow: hidden;
+    }
+    .b-top {
+      background: #1a1a1a;
+      padding: 36px 24px 28px;
+      flex-shrink: 0;
+    }
+    .b-eyebrow {
+      font-size: 9px; letter-spacing: 0.3em; color: #555; text-transform: uppercase; margin-bottom: 10px;
+    }
+    .b-title {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 52px; color: #fff; line-height: 0.9; margin-bottom: 10px;
+    }
+    .b-title span { color: #ff4500; }
+    .b-tagline { font-size: 11px; color: rgba(255,255,255,0.4); line-height: 1.5; }
+    .b-body { flex: 1; padding: 20px 24px; display: flex; flex-direction: column; gap: 10px; }
+    .b-card {
+      background: #fff;
+      border-radius: 10px;
+      padding: 12px 14px;
+      display: flex; align-items: center; gap: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+    .b-card-bar { width: 3px; height: 28px; border-radius: 2px; flex-shrink: 0; }
+    .b-card-name { font-size: 11px; font-weight: 600; color: #1a1a1a; }
+    .b-card-loc { font-size: 9px; color: #999; margin-top: 2px; }
+    .b-footer { padding: 0 24px 24px; display: flex; flex-direction: column; gap: 8px; }
+    .b-btn {
+      background: #ff4500; color: #fff;
+      border: none; border-radius: 8px; padding: 13px;
+      font-family: 'Bebas Neue', sans-serif; font-size: 18px;
+      letter-spacing: 0.1em; cursor: pointer;
+    }
+    .b-skip { text-align: center; font-size: 10px; color: #aaa; }
+
+    .b-scanner {
+      background: #0d0d0d;
+      position: relative; overflow: hidden;
+      font-family: Inter, sans-serif;
+    }
+    .b-cam { position: absolute; inset: 0; background: linear-gradient(180deg,#1a0a00,#0d0d0d); }
+    .b-scan-line {
+      position: absolute; left: 0; right: 0; height: 2px;
+      background: linear-gradient(90deg, transparent, #ff4500, transparent);
+      top: 35%; opacity: 0.8;
+    }
+    .b-bbox2 {
+      position: absolute; top: 100px; left: 30px; right: 30px; bottom: 150px;
+      border: 2px solid #ff4500; border-radius: 2px;
+    }
+    .b-tag {
+      position: absolute; top: 86px; left: 30px;
+      background: #ff4500; color: #fff;
+      font-family: 'Bebas Neue', sans-serif; font-size: 14px;
+      padding: 2px 10px; letter-spacing: 0.05em;
+    }
+    .b-hud {
+      position: absolute; top: 14px; left: 14px; right: 14px;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .b-status {
+      font-size: 8px; letter-spacing: 0.2em; text-transform: uppercase;
+      color: #ff4500; font-weight: 700;
+    }
+    .b-brand {
+      font-family: 'Bebas Neue', sans-serif; font-size: 14px; color: rgba(255,255,255,0.2);
+      letter-spacing: 0.1em;
+    }
+    .b-conf-bar {
+      position: absolute; bottom: 130px; left: 30px; right: 30px;
+      background: rgba(0,0,0,0.8); border-left: 3px solid #ff4500; padding: 8px 12px;
+    }
+    .b-conf-name { font-size: 11px; font-weight: 700; color: #fff; }
+    .b-conf-pct { font-size: 9px; color: #ff4500; margin-top: 2px; }
+    .b-exit2 {
+      position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%);
+      background: transparent; border: 1px solid rgba(255,255,255,0.2);
+      color: rgba(255,255,255,0.4); font-size: 9px; font-family: Inter, sans-serif;
+      padding: 6px 18px; border-radius: 4px; cursor: pointer;
+      letter-spacing: 0.15em; text-transform: uppercase;
+    }
+
+    /* ════════════════════════════════════════
+       PROPOSAL C — NEON CYBER
+    ════════════════════════════════════════ */
+    .c-welcome {
+      background: #04010f;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      padding: 32px 24px;
+      font-family: 'Orbitron', monospace;
+      position: relative; overflow: hidden;
+    }
+    .c-bg {
+      position: absolute; inset: 0;
+      background: radial-gradient(ellipse 100% 50% at 50% 100%, rgba(168,85,247,0.2), transparent);
+    }
+    .c-grid {
+      position: absolute; inset: 0;
+      background-image: linear-gradient(rgba(168,85,247,0.05) 1px, transparent 1px),
+                        linear-gradient(90deg, rgba(168,85,247,0.05) 1px, transparent 1px);
+      background-size: 24px 24px;
+    }
+    .c-hex {
+      position: relative; margin-bottom: 24px;
+      width: 60px; height: 60px;
+    }
+    .c-hex svg { width: 100%; height: 100%; }
+    .c-title {
+      font-size: 20px; font-weight: 900;
+      background: linear-gradient(90deg, #00f0ff, #a855f7);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+      letter-spacing: 0.05em; margin-bottom: 4px; position: relative;
+      filter: drop-shadow(0 0 10px rgba(0,240,255,0.3));
+    }
+    .c-sub {
+      font-size: 7px; color: rgba(168,85,247,0.5);
+      letter-spacing: 0.3em; text-transform: uppercase;
+      margin-bottom: 32px; position: relative;
+    }
+    .c-buildings {
+      width: 100%; display: flex; flex-direction: column; gap: 6px; margin-bottom: 28px; position: relative;
+    }
+    .c-bldg {
+      display: flex; align-items: center; gap: 8px; padding: 8px 12px;
+      border: 1px solid rgba(0,240,255,0.12);
+      background: rgba(0,240,255,0.03);
+    }
+    .c-bdot { width: 6px; height: 6px; border-radius: 50%; }
+    .c-bname { font-size: 8px; color: rgba(255,255,255,0.5); letter-spacing: 0.1em; }
+    .c-btn {
+      width: 100%; position: relative;
+      background: linear-gradient(90deg, rgba(0,240,255,0.1), rgba(168,85,247,0.1));
+      border: 1px solid rgba(0,240,255,0.4);
+      color: #00f0ff; font-family: 'Orbitron', monospace;
+      font-size: 9px; font-weight: 700; letter-spacing: 0.2em;
+      padding: 12px; cursor: pointer; text-transform: uppercase;
+      clip-path: polygon(6px 0%, 100% 0%, calc(100% - 6px) 100%, 0% 100%);
+      margin-bottom: 10px;
+    }
+    .c-skip { font-size: 7px; color: rgba(168,85,247,0.3); letter-spacing: 0.15em; text-align: center; position: relative; }
+
+    .c-scanner {
+      background: #04010f; position: relative; overflow: hidden;
+      font-family: 'Orbitron', monospace;
+    }
+    .c-s-bg {
+      position: absolute; inset: 0;
+      background: radial-gradient(ellipse 80% 40% at 50% 50%, rgba(0,240,255,0.06), transparent);
+    }
+    .c-s-grid {
+      position: absolute; inset: 0;
+      background-image: linear-gradient(rgba(0,240,255,0.03) 1px, transparent 1px),
+                        linear-gradient(90deg, rgba(0,240,255,0.03) 1px, transparent 1px);
+      background-size: 20px 20px;
+    }
+    .c-bbox {
+      position: absolute; top: 100px; left: 30px; right: 30px; bottom: 140px;
+      border: 1px solid #00f0ff;
+      box-shadow: 0 0 12px rgba(0,240,255,0.2), inset 0 0 12px rgba(0,240,255,0.05);
+    }
+    .c-bc { position: absolute; width: 10px; height: 10px; }
+    .c-bc.tl { top: -1px; left: -1px; border-top: 2px solid #00f0ff; border-left: 2px solid #00f0ff; }
+    .c-bc.tr { top: -1px; right: -1px; border-top: 2px solid #00f0ff; border-right: 2px solid #00f0ff; }
+    .c-bc.bl { bottom: -1px; left: -1px; border-bottom: 2px solid #00f0ff; border-left: 2px solid #00f0ff; }
+    .c-bc.br { bottom: -1px; right: -1px; border-bottom: 2px solid #00f0ff; border-right: 2px solid #00f0ff; }
+    .c-s-label {
+      position: absolute; top: 86px; left: 30px;
+      background: #00f0ff; color: #000;
+      font-size: 7px; font-weight: 700; padding: 3px 8px; letter-spacing: 0.1em;
+      clip-path: polygon(4px 0%, 100% 0%, calc(100% - 4px) 100%, 0% 100%);
+    }
+    .c-s-hud { position: absolute; top: 14px; left: 14px; right: 14px; display: flex; justify-content: space-between; }
+    .c-s-status { font-size: 7px; color: #00f0ff; letter-spacing: 0.2em; text-shadow: 0 0 8px #00f0ff; }
+    .c-s-brand { font-size: 8px; color: rgba(168,85,247,0.3); letter-spacing: 0.1em; }
+    .c-s-conf {
+      position: absolute; bottom: 120px; left: 30px; right: 30px;
+      background: rgba(0,0,0,0.85); border: 1px solid rgba(0,240,255,0.2); padding: 8px 12px;
+    }
+    .c-s-conf-name { font-size: 8px; color: #fff; letter-spacing: 0.1em; }
+    .c-s-conf-pct { font-size: 8px; color: #00f0ff; margin-top: 3px; text-shadow: 0 0 6px #00f0ff; }
+    .c-s-legend { position: absolute; bottom: 54px; right: 14px; display: flex; flex-direction: column; gap: 4px; }
+    .c-s-leg { display: flex; align-items: center; gap: 4px; }
+    .c-s-led { width: 5px; height: 5px; border-radius: 50%; }
+    .c-s-lname { font-size: 6px; color: rgba(255,255,255,0.25); }
+    .c-s-exit {
+      position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%);
+      background: transparent; border: 1px solid rgba(0,240,255,0.2);
+      color: rgba(0,240,255,0.4); font-family: 'Orbitron', monospace;
+      font-size: 7px; padding: 6px 16px; cursor: pointer; letter-spacing: 0.15em;
+      clip-path: polygon(4px 0%, 100% 0%, calc(100% - 4px) 100%, 0% 100%);
+    }
+
+    /* ════════════════════════════════════════
+       PROPOSAL D — WARM EDITORIAL
+    ════════════════════════════════════════ */
+    .d-welcome {
+      background: #faf7f2;
+      display: flex; flex-direction: column;
+      font-family: Inter, sans-serif;
+      overflow: hidden;
+    }
+    .d-top {
+      background: linear-gradient(135deg, #1a2e4a 0%, #0d1f35 100%);
+      padding: 32px 22px 24px;
+    }
+    .d-eyebrow { font-size: 8px; letter-spacing: 0.3em; color: rgba(255,255,255,0.3); text-transform: uppercase; margin-bottom: 12px; }
+    .d-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 34px; color: #fff; line-height: 1; margin-bottom: 8px;
+    }
+    .d-rule { width: 28px; height: 2px; background: #2a7fff; margin-bottom: 10px; }
+    .d-desc { font-size: 10px; color: rgba(255,255,255,0.45); line-height: 1.6; }
+    .d-body { flex: 1; padding: 18px 22px; display: flex; flex-direction: column; gap: 8px; }
+    .d-step {
+      display: flex; align-items: flex-start; gap: 12px;
+      padding: 10px 0;
+      border-bottom: 1px solid #ede9e0;
+    }
+    .d-step:last-child { border-bottom: none; }
+    .d-step-num {
+      font-size: 20px; font-weight: 800; color: #e8e0d4;
+      line-height: 1; flex-shrink: 0; width: 28px;
+    }
+    .d-step-title { font-size: 11px; font-weight: 600; color: #1a2e4a; margin-bottom: 2px; }
+    .d-step-desc { font-size: 9px; color: #9ca3af; line-height: 1.5; }
+    .d-footer { padding: 0 22px 22px; display: flex; flex-direction: column; gap: 8px; }
+    .d-btn {
+      background: #1a2e4a; color: #fff; border: none; border-radius: 10px;
+      padding: 13px; font-size: 13px; font-weight: 600; cursor: pointer;
+      font-family: Inter, sans-serif;
+    }
+    .d-skip { text-align: center; font-size: 10px; color: #c0b8ae; }
+
+    .d-scanner {
+      background: #0d1117; position: relative; overflow: hidden;
+      font-family: Inter, sans-serif;
+    }
+    .d-s-bg {
+      position: absolute; inset: 0;
+      background: linear-gradient(180deg, #0d1f35 0%, #0d1117 60%);
+    }
+    .d-s-bbox {
+      position: absolute; top: 100px; left: 28px; right: 28px; bottom: 148px;
+      border: 1.5px solid rgba(42,127,255,0.6);
+      border-radius: 4px;
+      box-shadow: 0 0 20px rgba(42,127,255,0.1);
+    }
+    .d-s-bc { position: absolute; width: 12px; height: 12px; }
+    .d-s-bc.tl { top: -1px; left: -1px; border-top: 2.5px solid #2a7fff; border-left: 2.5px solid #2a7fff; }
+    .d-s-bc.tr { top: -1px; right: -1px; border-top: 2.5px solid #2a7fff; border-right: 2.5px solid #2a7fff; }
+    .d-s-bc.bl { bottom: -1px; left: -1px; border-bottom: 2.5px solid #2a7fff; border-left: 2.5px solid #2a7fff; }
+    .d-s-bc.br { bottom: -1px; right: -1px; border-bottom: 2.5px solid #2a7fff; border-right: 2.5px solid #2a7fff; }
+    .d-s-card {
+      position: absolute; top: 78px; left: 28px; right: 28px;
+      background: rgba(10,20,40,0.9);
+      border: 1px solid rgba(42,127,255,0.2);
+      border-radius: 8px; padding: 10px 14px;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .d-s-bname { font-size: 11px; font-weight: 600; color: #fff; }
+    .d-s-conf { font-size: 10px; color: #2a7fff; font-weight: 600; }
+    .d-s-hud { position: absolute; top: 14px; left: 14px; right: 14px; display: flex; justify-content: space-between; align-items: center; }
+    .d-s-status {
+      font-size: 8px; color: #22c55e; letter-spacing: 0.1em; text-transform: uppercase;
+      display: flex; align-items: center; gap: 5px;
+    }
+    .d-s-dot { width: 5px; height: 5px; border-radius: 50%; background: #22c55e; }
+    .d-s-brand { font-size: 10px; font-weight: 700; color: rgba(255,255,255,0.15); letter-spacing: 0.05em; }
+    .d-s-legend { position: absolute; bottom: 60px; right: 14px; display: flex; flex-direction: column; gap: 5px; }
+    .d-s-leg { display: flex; align-items: center; gap: 5px; }
+    .d-s-led { width: 5px; height: 5px; border-radius: 50%; }
+    .d-s-lname { font-size: 8px; color: rgba(255,255,255,0.3); }
+    .d-s-exit {
+      position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%);
+      background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
+      color: rgba(255,255,255,0.3); font-family: Inter, sans-serif;
+      font-size: 9px; padding: 7px 20px; border-radius: 20px; cursor: pointer;
+      letter-spacing: 0.1em; text-transform: uppercase;
+    }
+  </style>
+</head>
+<body>
+
+<div class="page-header">
+  <h1>AR·DOOH — Design Proposals</h1>
+  <h2>4 Frontend Directions</h2>
+  <p>Welcome screen + Live scanner shown for each proposal</p>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     PROPOSAL A — CLEAN DARK
+══════════════════════════════════════════════ -->
+<div class="proposal">
+  <div class="proposal-header">
+    <span class="proposal-num">Proposal 01</span>
+    <span class="proposal-name">Clean Dark</span>
+    <span class="proposal-tag">Minimal · Premium · Simple</span>
+  </div>
+  <div class="screens">
+
+    <!-- Welcome -->
+    <div class="screen-wrap">
+      <div class="phone a-welcome">
+        <div class="a-logo-ring"><div class="a-logo-inner"></div></div>
+        <div class="a-title">AR·DOOH</div>
+        <div class="a-sub">NYC Landmark Detection</div>
+        <div class="a-buildings">
+          <div class="a-bldg"><div class="a-dot" style="background:#00f0ff"></div><span class="a-bname">World Trade Center</span></div>
+          <div class="a-bldg"><div class="a-dot" style="background:#ff6b00"></div><span class="a-bname">The Edge</span></div>
+          <div class="a-bldg"><div class="a-dot" style="background:#a855f7"></div><span class="a-bname">Empire State Building</span></div>
+        </div>
+        <button class="a-btn">Get Started</button>
+        <div class="a-skip">Skip intro</div>
+      </div>
+      <span class="screen-label">Welcome</span>
+    </div>
+
+    <!-- Scanner -->
+    <div class="screen-wrap">
+      <div class="phone a-scanner">
+        <div class="a-cam-bg"></div>
+        <div class="a-hud-tl">● Detected</div>
+        <div class="a-hud-tr">AR·DOOH</div>
+        <div class="a-confidence">
+          <span class="a-conf-name">World Trade Center</span>
+          <span class="a-conf-pct">94.2%</span>
+        </div>
+        <div class="a-bbox">
+          <div class="a-bbox-corner tl"></div>
+          <div class="a-bbox-corner tr"></div>
+          <div class="a-bbox-corner bl"></div>
+          <div class="a-bbox-corner br"></div>
+        </div>
+        <div class="a-hud-br">
+          <div class="a-legend"><div class="a-legend-dot" style="background:#00f0ff"></div><span class="a-legend-name">WTC</span></div>
+          <div class="a-legend"><div class="a-legend-dot" style="background:#ff6b00"></div><span class="a-legend-name">Edge</span></div>
+          <div class="a-legend"><div class="a-legend-dot" style="background:#a855f7"></div><span class="a-legend-name">ESB</span></div>
+        </div>
+        <button class="a-exit">Exit</button>
+      </div>
+      <span class="screen-label">Live Scanner</span>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     PROPOSAL B — URBAN / EDITORIAL
+══════════════════════════════════════════════ -->
+<div class="proposal">
+  <div class="proposal-header">
+    <span class="proposal-num">Proposal 02</span>
+    <span class="proposal-name">Urban Editorial</span>
+    <span class="proposal-tag">Bold · NYC Energy · Magazine</span>
+  </div>
+  <div class="screens">
+
+    <!-- Welcome -->
+    <div class="screen-wrap">
+      <div class="phone b-welcome">
+        <div class="b-top">
+          <div class="b-eyebrow">New York City · AR Detection</div>
+          <div class="b-title">AR·<br/><span>DOOH</span></div>
+          <div class="b-tagline">Point your camera.<br/>Discover New York.</div>
+        </div>
+        <div class="b-body">
+          <div class="b-card">
+            <div class="b-card-bar" style="background:#00c4cc"></div>
+            <div><div class="b-card-name">World Trade Center</div><div class="b-card-loc">Lower Manhattan</div></div>
+          </div>
+          <div class="b-card">
+            <div class="b-card-bar" style="background:#ff4500"></div>
+            <div><div class="b-card-name">The Edge</div><div class="b-card-loc">Hudson Yards</div></div>
+          </div>
+          <div class="b-card">
+            <div class="b-card-bar" style="background:#a855f7"></div>
+            <div><div class="b-card-name">Empire State Building</div><div class="b-card-loc">Midtown</div></div>
+          </div>
+        </div>
+        <div class="b-footer">
+          <button class="b-btn">Start</button>
+          <div class="b-skip">Skip tutorial</div>
+        </div>
+      </div>
+      <span class="screen-label">Welcome</span>
+    </div>
+
+    <!-- Scanner -->
+    <div class="screen-wrap">
+      <div class="phone b-scanner">
+        <div class="b-cam"></div>
+        <div class="b-hud">
+          <span class="b-status">● Landmark Detected</span>
+          <span class="b-brand">AR·DOOH</span>
+        </div>
+        <div class="b-bbox2"></div>
+        <div class="b-tag">World Trade Center</div>
+        <div class="b-conf-bar">
+          <div class="b-conf-name">World Trade Center</div>
+          <div class="b-conf-pct">Confidence: 94.2%</div>
+        </div>
+        <button class="b-exit2">Exit</button>
+      </div>
+      <span class="screen-label">Live Scanner</span>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     PROPOSAL C — NEON CYBER
+══════════════════════════════════════════════ -->
+<div class="proposal">
+  <div class="proposal-header">
+    <span class="proposal-num">Proposal 03</span>
+    <span class="proposal-name">Neon Cyber</span>
+    <span class="proposal-tag">Sci-Fi · Glowing · Futuristic</span>
+  </div>
+  <div class="screens">
+
+    <!-- Welcome -->
+    <div class="screen-wrap">
+      <div class="phone c-welcome">
+        <div class="c-bg"></div>
+        <div class="c-grid"></div>
+        <div class="c-hex">
+          <svg viewBox="0 0 60 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <polygon points="30,3 54,16 54,44 30,57 6,44 6,16" stroke="url(#cg)" stroke-width="1.5" fill="rgba(0,240,255,0.04)"/>
+            <polygon points="30,10 47,20 47,40 30,50 13,40 13,20" stroke="rgba(168,85,247,0.3)" stroke-width="1" fill="none" stroke-dasharray="3 3"/>
+            <circle cx="30" cy="30" r="8" stroke="#00f0ff" stroke-width="1.5" fill="rgba(0,240,255,0.08)"/>
+            <circle cx="30" cy="30" r="2.5" fill="#00f0ff"/>
+            <defs><linearGradient id="cg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#00f0ff"/><stop offset="100%" stop-color="#a855f7"/></linearGradient></defs>
+          </svg>
+        </div>
+        <div class="c-title">AR·DOOH</div>
+        <div class="c-sub">NYC Landmark Detection</div>
+        <div class="c-buildings">
+          <div class="c-bldg"><div class="c-bdot" style="background:#00f0ff;box-shadow:0 0 5px #00f0ff"></div><span class="c-bname">World Trade Center</span></div>
+          <div class="c-bldg"><div class="c-bdot" style="background:#ff6b00;box-shadow:0 0 5px #ff6b00"></div><span class="c-bname">The Edge</span></div>
+          <div class="c-bldg"><div class="c-bdot" style="background:#a855f7;box-shadow:0 0 5px #a855f7"></div><span class="c-bname">Empire State Building</span></div>
+        </div>
+        <button class="c-btn">Initialize</button>
+        <div class="c-skip">// Skip Tutorial //</div>
+      </div>
+      <span class="screen-label">Welcome</span>
+    </div>
+
+    <!-- Scanner -->
+    <div class="screen-wrap">
+      <div class="phone c-scanner">
+        <div class="c-s-bg"></div>
+        <div class="c-s-grid"></div>
+        <div class="c-s-hud">
+          <span class="c-s-status">● Detected</span>
+          <span class="c-s-brand">AR·DOOH</span>
+        </div>
+        <div class="c-bbox">
+          <div class="c-bc tl"></div><div class="c-bc tr"></div>
+          <div class="c-bc bl"></div><div class="c-bc br"></div>
+        </div>
+        <div class="c-s-label">WTC · 94.2%</div>
+        <div class="c-s-conf">
+          <div class="c-s-conf-name">World Trade Center</div>
+          <div class="c-s-conf-pct">94.2% confidence</div>
+        </div>
+        <div class="c-s-legend">
+          <div class="c-s-leg"><div class="c-s-led" style="background:#00f0ff"></div><span class="c-s-lname">WTC</span></div>
+          <div class="c-s-leg"><div class="c-s-led" style="background:#ff6b00"></div><span class="c-s-lname">Edge</span></div>
+          <div class="c-s-leg"><div class="c-s-led" style="background:#a855f7"></div><span class="c-s-lname">ESB</span></div>
+        </div>
+        <button class="c-s-exit">Exit</button>
+      </div>
+      <span class="screen-label">Live Scanner</span>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     PROPOSAL D — WARM EDITORIAL
+══════════════════════════════════════════════ -->
+<div class="proposal">
+  <div class="proposal-header">
+    <span class="proposal-num">Proposal 04</span>
+    <span class="proposal-name">Warm Editorial</span>
+    <span class="proposal-tag">Refined · Travel Guide · Elegant</span>
+  </div>
+  <div class="screens">
+
+    <!-- Welcome -->
+    <div class="screen-wrap">
+      <div class="phone d-welcome">
+        <div class="d-top">
+          <div class="d-eyebrow">New York City · AR</div>
+          <div class="d-title">AR·DOOH</div>
+          <div class="d-rule"></div>
+          <div class="d-desc">Point your camera at a NYC landmark and watch it come alive.</div>
+        </div>
+        <div class="d-body">
+          <div class="d-step">
+            <div class="d-step-num">01</div>
+            <div><div class="d-step-title">Point</div><div class="d-step-desc">Aim at a NYC landmark</div></div>
+          </div>
+          <div class="d-step">
+            <div class="d-step-num">02</div>
+            <div><div class="d-step-title">Detect</div><div class="d-step-desc">AI identifies the building</div></div>
+          </div>
+          <div class="d-step">
+            <div class="d-step-num">03</div>
+            <div><div class="d-step-title">Explore</div><div class="d-step-desc">See real-time AR overlay</div></div>
+          </div>
+        </div>
+        <div class="d-footer">
+          <button class="d-btn">Start Tutorial</button>
+          <div class="d-skip">Skip to Scanner</div>
+        </div>
+      </div>
+      <span class="screen-label">Welcome</span>
+    </div>
+
+    <!-- Scanner -->
+    <div class="screen-wrap">
+      <div class="phone d-scanner">
+        <div class="d-s-bg"></div>
+        <div class="d-s-hud">
+          <div class="d-s-status"><div class="d-s-dot"></div>Landmark Detected</div>
+          <span class="d-s-brand">AR·DOOH</span>
+        </div>
+        <div class="d-s-card">
+          <span class="d-s-bname">World Trade Center</span>
+          <span class="d-s-conf">94.2%</span>
+        </div>
+        <div class="d-s-bbox">
+          <div class="d-s-bc tl"></div><div class="d-s-bc tr"></div>
+          <div class="d-s-bc bl"></div><div class="d-s-bc br"></div>
+        </div>
+        <div class="d-s-legend">
+          <div class="d-s-leg"><div class="d-s-led" style="background:#00c4cc"></div><span class="d-s-lname">WTC</span></div>
+          <div class="d-s-leg"><div class="d-s-led" style="background:#ff6b00"></div><span class="d-s-lname">Edge</span></div>
+          <div class="d-s-leg"><div class="d-s-led" style="background:#a855f7"></div><span class="d-s-lname">ESB</span></div>
+        </div>
+        <button class="d-s-exit">Exit</button>
+      </div>
+      <span class="screen-label">Live Scanner</span>
+    </div>
+
+  </div>
+</div>
+
+</body>
+</html>
