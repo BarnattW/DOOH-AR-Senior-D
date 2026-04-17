@@ -1,0 +1,7 @@
+{
+  "devDependencies": {
+    "docx": "^9.6.1",
+    "pdfkit": "^0.18.0",
+    "sharp": "^0.34.5"
+  }
+}
