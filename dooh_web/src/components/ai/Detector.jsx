@@ -99,5 +99,8 @@ export function useDetector() {
     return filtered;
   };
 
-  return { session, detect };
+  return {
+    session,
+    detect,
+  };
 }
