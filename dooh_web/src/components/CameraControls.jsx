@@ -1,6 +1,9 @@
 export default function CameraControls({
   onStart,
   onStop,
+  onCapture,
+  lastPhoto,
+  onOpenLibrary,
   canStart,
   isRunning,
   zoom,
@@ -24,21 +27,32 @@ export default function CameraControls({
         {isRunning ? (
           <>
             <button
-              onClick={() => stepZoom(-1)}
-              disabled={zoom <= MIN_ZOOM || currentStepIndex === 0}
-              aria-label="Zoom out"
-              className="mb-3 flex h-11 w-11 items-center justify-center rounded-full border border-white/15 bg-black/35 text-xl text-white/80 backdrop-blur-md transition-transform duration-100 active:scale-95 disabled:opacity-25"
+              onClick={onOpenLibrary}
+              disabled={!lastPhoto}
+              aria-label="Open photo library"
+              className="mb-3 flex h-14 w-14 items-center justify-center overflow-hidden rounded-full border border-white/25 bg-black/35 text-white/80 shadow-lg shadow-black/30 backdrop-blur-md transition-transform duration-100 active:scale-95 disabled:opacity-35"
             >
-              −
+              {lastPhoto ? (
+                <img
+                  src={lastPhoto.url}
+                  alt=""
+                  className="h-full w-full object-cover"
+                  draggable="false"
+                />
+              ) : (
+                <span className="flex h-7 w-7 items-center justify-center rounded-md border-2 border-white/70">
+                  <span className="h-1.5 w-1.5 rounded-full bg-white/70" />
+                </span>
+              )}
             </button>
 
             <div className="relative flex flex-col items-center">
               <button
-                onClick={onStop}
-                aria-label="Stop camera"
+                onClick={onCapture}
+                aria-label="Take photo"
                 className="h-[68px] w-[68px] rounded-full border-[3px] border-white/80 bg-black/20 backdrop-blur-sm transition-transform duration-100 active:scale-95 flex items-center justify-center"
               >
-                <span className="block h-[22px] w-[22px] rounded-[4px] bg-white" />
+                <span className="block h-[54px] w-[54px] rounded-full bg-white" />
               </button>
               <div className="absolute left-1/2 top-full -translate-x-1/2 translate-y-2 rounded-full border border-white/10 bg-black/30 px-3 py-1 text-[11px] font-medium tabular-nums tracking-[0.2em] text-white/70 backdrop-blur-md">
                 {zoomSteps[currentStepIndex].toFixed(zoomSteps[currentStepIndex] % 1 === 0 ? 0 : 1)}X
@@ -46,12 +60,11 @@ export default function CameraControls({
             </div>
 
             <button
-              onClick={() => stepZoom(1)}
-              disabled={zoom >= MAX_ZOOM || currentStepIndex === zoomSteps.length - 1}
-              aria-label="Zoom in"
-              className="mb-3 flex h-11 w-11 items-center justify-center rounded-full border border-white/15 bg-black/35 text-xl text-white/80 backdrop-blur-md transition-transform duration-100 active:scale-95 disabled:opacity-25"
+              onClick={onStop}
+              aria-label="Stop camera"
+              className="mb-3 flex h-14 w-14 items-center justify-center rounded-full border border-white/15 bg-black/35 text-white/80 backdrop-blur-md transition-transform duration-100 active:scale-95"
             >
-              +
+              <span className="block h-[18px] w-[18px] rounded-[4px] bg-white" />
             </button>
           </>
         ) : (
@@ -65,6 +78,26 @@ export default function CameraControls({
           </button>
         )}
       </div>
+      {isRunning && (
+        <div className="flex items-center justify-center gap-3">
+          <button
+            onClick={() => stepZoom(-1)}
+            disabled={zoom <= MIN_ZOOM || currentStepIndex === 0}
+            aria-label="Zoom out"
+            className="flex h-10 w-10 items-center justify-center rounded-full border border-white/15 bg-black/35 text-xl text-white/80 backdrop-blur-md transition-transform duration-100 active:scale-95 disabled:opacity-25"
+          >
+            -
+          </button>
+          <button
+            onClick={() => stepZoom(1)}
+            disabled={zoom >= MAX_ZOOM || currentStepIndex === zoomSteps.length - 1}
+            aria-label="Zoom in"
+            className="flex h-10 w-10 items-center justify-center rounded-full border border-white/15 bg-black/35 text-xl text-white/80 backdrop-blur-md transition-transform duration-100 active:scale-95 disabled:opacity-25"
+          >
+            +
+          </button>
+        </div>
+      )}
     </div>
   );
 }
