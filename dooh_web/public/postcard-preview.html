@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Postcard Template Options</title>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;700&family=DM+Sans:ital,wght@0,400;0,500;1,400&display=swap"
+    rel="stylesheet"
+  />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #161616;
+      font-family: 'DM Sans', sans-serif;
+      padding: 48px 32px;
+      color: #fff;
+    }
+
+    h1 {
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.35em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.35);
+      margin-bottom: 48px;
+    }
+
+    .section { margin-bottom: 64px; }
+    .section-label {
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: 0.3em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.28);
+      margin-bottom: 14px;
+    }
+
+    /* ── shared postcard shell ── */
+    .postcard {
+      width: 720px;
+      height: 480px;
+      position: relative;
+      overflow: hidden;
+      border-radius: 3px;
+      box-shadow: 0 12px 48px rgba(0,0,0,0.55);
+    }
+
+    /* ── shared stamp ── */
+    .stamp {
+      width: 68px;
+      height: 84px;
+      position: relative;
+      background: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      /* Perforated edge via radial-gradient mask */
+      -webkit-mask-image: radial-gradient(circle at 0 0, transparent 5px, black 5px),
+                          radial-gradient(circle at 100% 0, transparent 5px, black 5px),
+                          radial-gradient(circle at 0 100%, transparent 5px, black 5px),
+                          radial-gradient(circle at 100% 100%, transparent 5px, black 5px);
+      -webkit-mask-composite: source-over;
+      border: 1.5px dashed #c0b8ae;
+      outline: none;
+    }
+    .stamp::before {
+      content: '';
+      position: absolute;
+      inset: 5px;
+      border: 0.75px solid #ddd;
+      pointer-events: none;
+    }
+    .stamp-txt {
+      font-size: 6.5px;
+      font-weight: 500;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: #999;
+      position: relative;
+      z-index: 1;
+    }
+    .stamp-red { border-color: #c04040; }
+    .stamp-red .stamp-txt { color: #c04040; }
+    .stamp-red::before { border-color: #e08080; }
+    .stamp-sepia { border-color: #9a7a50; background: #fdf6e8; }
+    .stamp-sepia .stamp-txt { color: #9a7a50; }
+    .stamp-sepia::before { border-color: #c8a870; }
+
+    /* ── shared postmark ── */
+    .postmark {
+      width: 62px;
+      height: 62px;
+      border-radius: 50%;
+      border: 1.5px solid rgba(180,50,30,0.45);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 1px;
+      flex-shrink: 0;
+    }
+    .postmark span {
+      font-size: 6.5px;
+      font-family: 'DM Sans', sans-serif;
+      font-weight: 500;
+      color: rgba(180,50,30,0.6);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      text-align: center;
+      line-height: 1.5;
+    }
+    .postmark-sepia {
+      border-color: rgba(120,80,30,0.5);
+    }
+    .postmark-sepia span { color: rgba(120,80,30,0.65); }
+
+    /* ── address block ── */
+    .address {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .address-label {
+      font-size: 7.5px;
+      font-weight: 500;
+      letter-spacing: 0.28em;
+      text-transform: uppercase;
+      color: #b0a898;
+      margin-bottom: 2px;
+    }
+    .address-name {
+      font-size: 13px;
+      font-weight: 500;
+      color: #3a3228;
+      line-height: 1;
+      margin-bottom: 2px;
+    }
+    .address-lines {
+      font-size: 11px;
+      color: #7a6e62;
+      line-height: 1.75;
+    }
+
+    /* ── message lines ── */
+    .msg-line {
+      width: 100%;
+      height: 1px;
+      background: #e4dcd4;
+      position: relative;
+    }
+    .msg-text {
+      position: absolute;
+      bottom: 4px;
+      left: 0;
+      font-family: 'Caveat', cursive;
+      font-size: 19px;
+      color: #3a2e22;
+      white-space: nowrap;
+    }
+
+
+    /* ════════════════════════════════════════════
+       A — SPLIT CLASSIC
+       Photo left (58%) | stamp+address right
+    ════════════════════════════════════════════ */
+    .tA { background: #fdf9f4; display: flex; }
+
+    .tA-photo {
+      width: 418px;
+      background: linear-gradient(155deg, #7a9cad 0%, #a89880 55%, #6a806a 100%);
+      position: relative;
+      flex-shrink: 0;
+    }
+    .tA-photo-caption {
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      padding: 32px 18px 14px;
+      background: linear-gradient(transparent, rgba(0,0,0,0.42));
+      font-family: 'Caveat', cursive;
+      font-size: 17px;
+      color: rgba(255,255,255,0.9);
+      font-weight: 400;
+    }
+
+    .tA-right {
+      flex: 1;
+      border-left: 1px solid #ddd;
+      padding: 18px 20px;
+      display: flex;
+      flex-direction: column;
+    }
+    .tA-top-row {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+    .tA-label {
+      font-size: 7.5px;
+      font-weight: 500;
+      letter-spacing: 0.4em;
+      text-transform: uppercase;
+      color: #c0b8b0;
+      align-self: center;
+    }
+    .tA-rule { border: none; border-top: 1px solid #e4dcd4; margin: 10px 0; }
+    .tA-bottom {
+      margin-top: auto;
+      font-size: 8.5px;
+      color: #c0b0a0;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      text-align: right;
+    }
+
+
+    /* ════════════════════════════════════════════
+       B — PANORAMIC
+       Photo full-width top | message + address row
+    ════════════════════════════════════════════ */
+    .tB { background: #fdf9f4; display: flex; flex-direction: column; }
+
+    .tB-photo {
+      height: 272px;
+      background: linear-gradient(155deg, #6a8c9e 0%, #a09080 50%, #6a7860 100%);
+      position: relative;
+      overflow: hidden;
+    }
+    .tB-photo-tag {
+      position: absolute;
+      bottom: 14px;
+      left: 18px;
+      font-family: 'Caveat', cursive;
+      font-size: 17px;
+      color: rgba(255,255,255,0.86);
+      text-shadow: 0 1px 6px rgba(0,0,0,0.35);
+    }
+    .tB-bottom {
+      flex: 1;
+      display: flex;
+      border-top: 1px solid #ddd;
+    }
+    .tB-msg {
+      flex: 1;
+      padding: 16px 20px;
+      border-right: 1px solid #ddd;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .tB-msg-label {
+      font-size: 7.5px;
+      font-weight: 500;
+      letter-spacing: 0.3em;
+      text-transform: uppercase;
+      color: #bbb;
+    }
+    .tB-addr {
+      width: 222px;
+      padding: 14px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .tB-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+    }
+
+
+    /* ════════════════════════════════════════════
+       C — BORDERED PRINT
+       Paper border, photo + right col, caption strip
+    ════════════════════════════════════════════ */
+    .tC {
+      background: #f4ede0;
+      padding: 18px 18px 0;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .tC-body { flex: 1; display: flex; gap: 18px; min-height: 0; }
+    .tC-photo {
+      flex: 1;
+      background: linear-gradient(150deg, #90a8b8 0%, #b0a090 45%, #7a8870 100%);
+      overflow: hidden;
+    }
+    .tC-right {
+      width: 182px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .tC-stamp-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+    }
+    .tC-rule { border: none; border-top: 1px solid #c8bca8; }
+    .tC-caption {
+      padding: 10px 0 16px;
+      font-family: 'Caveat', cursive;
+      font-size: 16px;
+      color: #7a6a52;
+      border-top: 1px solid #c8bca8;
+    }
+
+
+    /* ════════════════════════════════════════════
+       D — FULL-SPLIT (message left, address right)
+       Classic "back of a postcard" feel with photo strip
+    ════════════════════════════════════════════ */
+    .tD {
+      background: #fefcf7;
+      display: flex;
+      border: 1px solid #e0d8cc;
+    }
+    .tD-left {
+      flex: 1;
+      padding: 28px 24px;
+      display: flex;
+      flex-direction: column;
+      border-right: 1px solid #ddd;
+    }
+    .tD-msg-label {
+      font-size: 7.5px;
+      font-weight: 500;
+      letter-spacing: 0.3em;
+      text-transform: uppercase;
+      color: #bbb;
+      margin-bottom: 22px;
+    }
+    .tD-lines { flex: 1; display: flex; flex-direction: column; gap: 28px; }
+    .tD-sig {
+      margin-top: auto;
+      padding-top: 14px;
+      border-top: 1px solid #eee;
+      font-family: 'Caveat', cursive;
+      font-size: 20px;
+      color: #5a4a38;
+    }
+    .tD-right {
+      width: 256px;
+      padding: 18px 20px;
+      display: flex;
+      flex-direction: column;
+    }
+    .tD-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
+    .tD-rule { border: none; border-top: 1px solid #e0d8cc; margin-bottom: 14px; }
+    .tD-label {
+      font-size: 7.5px;
+      font-weight: 500;
+      letter-spacing: 0.35em;
+      text-transform: uppercase;
+      color: #c4baa8;
+      text-align: center;
+    }
+    .tD-from {
+      margin-top: auto;
+      font-size: 8.5px;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: #bbb;
+    }
+  </style>
+</head>
+<body>
+
+<h1>Postcard Template Options — NYC AR App</h1>
+
+
+<!-- ══ A: SPLIT CLASSIC ══ -->
+<div class="section">
+  <div class="section-label">A — Split Classic &nbsp;·&nbsp; Photo left, info right</div>
+  <div class="postcard tA">
+
+    <div class="tA-photo">
+      <div class="tA-photo-caption">One World Trade Center, New York</div>
+    </div>
+
+    <div class="tA-right">
+      <div class="tA-top-row">
+        <div class="postmark">
+          <span>Apr 17<br/>2025<br/>N.Y.</span>
+        </div>
+        <div class="tA-label">Postcard</div>
+        <div class="stamp">
+          <span class="stamp-txt">New York</span>
+          <svg width="46" height="26" viewBox="0 0 52 28" fill="none">
+            <path d="M0 28L0 16 4 16 4 8 8 8 8 12 12 12 12 4 14 1 16 4 16 12 22 12 22 8 26 8 26 16 30 16 30 10 36 10 36 14 42 14 42 8 48 8 48 12 52 12 52 28Z" fill="#c8c0b8"/>
+          </svg>
+          <span class="stamp-txt">Forever</span>
+        </div>
+      </div>
+
+      <hr class="tA-rule" />
+
+      <div style="flex:1;display:flex;flex-direction:column;justify-content:center;gap:10px;">
+        <div style="font-size:14px;font-weight:500;color:#3a3228;">One World Trade Center</div>
+        <div style="font-family:'Caveat',cursive;font-size:18px;color:#5a5048;">What a view from the top of the world.</div>
+      </div>
+
+      <hr class="tA-rule" />
+      <div class="tA-bottom">April 17, 2025</div>
+    </div>
+
+  </div>
+</div>
+
+
+<!-- ══ B: PANORAMIC ══ -->
+<div class="section">
+  <div class="section-label">B — Panoramic &nbsp;·&nbsp; Photo top, message + address bottom</div>
+  <div class="postcard tB">
+
+    <div class="tB-photo">
+      <div class="tB-photo-tag">The Edge — Hudson Yards</div>
+    </div>
+
+    <div class="tB-bottom">
+      <div class="tB-msg">
+        <div class="tB-msg-label">Message</div>
+        <div class="msg-line"><span class="msg-text">Incredible view from up here—</span></div>
+        <div class="msg-line"><span class="msg-text">you have to come see this.</span></div>
+        <div class="msg-line"></div>
+      </div>
+
+      <div class="tB-addr">
+        <div class="tB-top">
+          <div class="postmark" style="width:50px;height:50px;">
+            <span style="font-size:5.5px;">APR 17<br/>N.Y.</span>
+          </div>
+          <div class="stamp" style="width:58px;height:72px;">
+            <span class="stamp-txt">New York</span>
+            <svg width="40" height="22" viewBox="0 0 52 28" fill="none">
+              <path d="M0 28L0 16 4 16 4 8 8 8 8 12 12 12 12 4 14 1 16 4 16 12 22 12 22 8 26 8 26 16 30 16 30 10 36 10 36 14 42 14 42 8 48 8 48 12 52 12 52 28Z" fill="#c8c0b8"/>
+            </svg>
+            <span class="stamp-txt">Forever</span>
+          </div>
+        </div>
+
+        <hr style="border:none;border-top:1px solid #e0d8cc;" />
+
+        <div style="font-size:8px;font-weight:500;letter-spacing:0.22em;text-transform:uppercase;color:#c0b8b0;">The Edge — Hudson Yards</div>
+        <div style="margin-top:auto;font-size:9px;color:#c0b0a0;letter-spacing:0.12em;text-transform:uppercase;">April 17, 2025</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+
+<!-- ══ C: BORDERED PRINT ══ -->
+<div class="section">
+  <div class="section-label">C — Bordered Print &nbsp;·&nbsp; Paper frame, caption strip</div>
+  <div class="postcard tC">
+
+    <div class="tC-body">
+      <div class="tC-photo"></div>
+
+      <div class="tC-right">
+        <div class="tC-stamp-row">
+          <div class="postmark postmark-sepia" style="width:50px;height:50px;">
+            <span style="font-size:5.5px;color:rgba(120,80,30,0.65);">APR 17<br/>NEW YORK</span>
+          </div>
+          <div class="stamp stamp-sepia">
+            <span class="stamp-txt">N.Y.C.</span>
+            <svg width="46" height="26" viewBox="0 0 52 28" fill="none">
+              <path d="M0 28L0 16 4 16 4 8 8 8 8 12 12 12 12 4 14 1 16 4 16 12 22 12 22 8 26 8 26 16 30 16 30 10 36 10 36 14 42 14 42 8 48 8 48 12 52 12 52 28Z" fill="#c0a070"/>
+            </svg>
+            <span class="stamp-txt">Forever</span>
+          </div>
+        </div>
+
+        <hr class="tC-rule" />
+
+        <div style="font-size:13px;font-weight:500;color:#4a3a28;line-height:1.6;">Empire State Building</div>
+        <div style="font-family:'Caveat',cursive;font-size:17px;color:#7a6a52;margin-top:6px;">What a view from up here.</div>
+
+        <div style="margin-top:auto;font-size:8px;color:#b0987a;letter-spacing:0.15em;text-transform:uppercase;">April 17, 2025</div>
+      </div>
+    </div>
+
+    <div class="tC-caption">Empire State Building — April 2025</div>
+
+  </div>
+</div>
+
+
+<!-- ══ D: FLIPPED ══ -->
+<div class="section">
+  <div class="section-label">D — Flipped &nbsp;·&nbsp; Info panel left, photo right</div>
+  <div class="postcard" style="background:#fdf9f4;display:flex;">
+
+    <!-- Left: paper panel -->
+    <div style="width:310px;flex-shrink:0;padding:18px 22px;display:flex;flex-direction:column;border-right:1px solid #d8d0c8;">
+      <!-- Stamp + postmark row -->
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px;">
+        <div class="postmark" style="width:56px;height:56px;">
+          <span>APR 17<br/>2025<br/>N.Y.</span>
+        </div>
+        <div style="font-size:7.5px;font-weight:500;letter-spacing:0.4em;text-transform:uppercase;color:#c0b8b0;align-self:center;">Postcard</div>
+        <div class="stamp">
+          <span class="stamp-txt">New York</span>
+          <svg width="46" height="26" viewBox="0 0 52 28" fill="none">
+            <path d="M0 28L0 16 4 16 4 8 8 8 8 12 12 12 12 4 14 1 16 4 16 12 22 12 22 8 26 8 26 16 30 16 30 10 36 10 36 14 42 14 42 8 48 8 48 12 52 12 52 28Z" fill="#c8c0b8"/>
+          </svg>
+          <span class="stamp-txt">Forever</span>
+        </div>
+      </div>
+
+      <hr style="border:none;border-top:1px solid #e4dcd4;margin-bottom:18px;" />
+
+      <div style="font-size:15px;font-weight:500;color:#3a3228;line-height:1.4;margin-bottom:10px;text-align:center;">One World Trade Center</div>
+      <div style="font-family:'Caveat',cursive;font-size:19px;color:#5a5048;text-align:center;line-height:1.5;">What a view from the top.</div>
+
+      <div style="margin-top:auto;font-size:8.5px;color:#c0b0a0;letter-spacing:0.15em;text-transform:uppercase;text-align:center;">April 17, 2025</div>
+    </div>
+
+    <!-- Right: photo -->
+    <div style="flex:1;background:linear-gradient(150deg,#7a9cad 0%,#a89880 55%,#6a806a 100%);"></div>
+
+  </div>
+</div>
+
+
+</body>
+</html>
