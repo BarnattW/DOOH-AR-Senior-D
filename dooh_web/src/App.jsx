@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState, useEffect, useCallback } from "react";
 import { Camera, useCamera } from "./components/camera/Camera";
 import { useDetectorMode } from "./hooks/useDetectorMode";
 import { useGeolocation } from "./hooks/useGeolocation";
@@ -11,6 +11,7 @@ import LocationStatus from "./components/LocationStatus";
 import CameraControls from "./components/CameraControls";
 import FilterPicker from "./components/FilterPicker";
 import PhotoLibrary from "./components/PhotoLibrary";
+import PostcardEditor from "./components/PostcardEditor";
 import StartPanel from "./components/StartPanel";
 
 const EMPIRE_STATE = { lat: 40.748817, lng: -73.985428 };
@@ -73,6 +74,7 @@ export default function App() {
     latestPhoto,
     isLibraryOpen,
     capturePhoto,
+    addPhoto,
     openLibrary,
     closeLibrary,
   } = usePhotoLibrary({
@@ -80,6 +82,16 @@ export default function App() {
     zoom,
     zoomCaps,
   });
+
+  const [postcardPhoto, setPostcardPhoto] = useState(null);
+
+  const handleCapture = useCallback(() => {
+    capturePhoto({
+      detectedBuilding: lastDetectionsRef.current[0]?.label ?? null,
+      filterLabel: FILTERS.find((f) => f.id === activeFilterId)?.label ?? null,
+      locationLabel: near ? "New York City, NY" : null,
+    });
+  }, [capturePhoto, activeFilterId, near]);
 
   const canStart = !isRunning;
 
@@ -155,7 +167,7 @@ export default function App() {
                 <CameraControls
                   onStart={handleStart}
                   onStop={stopWebcam}
-                  onCapture={capturePhoto}
+                  onCapture={handleCapture}
                   lastPhoto={latestPhoto}
                   onOpenLibrary={openLibrary}
                   canStart={canStart}
@@ -170,7 +182,28 @@ export default function App() {
           </div>
 
           {isLibraryOpen && (
-            <PhotoLibrary photos={photos} onClose={closeLibrary} />
+            <PhotoLibrary
+              photos={photos}
+              onClose={closeLibrary}
+              onPostcard={(photo) => {
+                closeLibrary();
+                setPostcardPhoto(photo);
+              }}
+            />
+          )}
+
+          {postcardPhoto && (
+            <PostcardEditor
+              photo={postcardPhoto}
+              onClose={() => setPostcardPhoto(null)}
+              onSaveToLibrary={(blob) => {
+                addPhoto(blob, {
+                  detectedBuilding: postcardPhoto.detectedBuilding,
+                  filterLabel: "Postcard",
+                  locationLabel: postcardPhoto.locationLabel,
+                });
+              }}
+            />
           )}
         </div>
       </div>
