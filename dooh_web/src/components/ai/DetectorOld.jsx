@@ -106,7 +106,7 @@ async function loadSessionOnce() {
     const ortMod = await loadOrtOnce();
     console.log("⏳ Loading YOLO ONNX model (local)...");
 
-    const s = await ortMod.InferenceSession.create("/trio_finetuned_32.onnx", {
+    const s = await ortMod.InferenceSession.create("/duo_finetuned_32.onnx", {
       executionProviders: ["webgpu", "wasm"],
     });
 
