@@ -12,7 +12,7 @@ const TOP_K = 200;
 const CONF_THRESH = 0.6;
 
 // Must match package.json `onnxruntime-web` version (WASM files load from CDN)
-const ORT_WASM_VERSION = "1.17.3";
+const ORT_WASM_VERSION = "1.22.0";
 const WASM_CDN_BASE = `https://cdn.jsdelivr.net/npm/onnxruntime-web@${ORT_WASM_VERSION}/dist/`;
 
 let lbCanvas = null;
@@ -106,7 +106,7 @@ async function loadSessionOnce() {
     const ortMod = await loadOrtOnce();
     console.log("⏳ Loading YOLO ONNX model (local)...");
 
-    const s = await ortMod.InferenceSession.create("/duo_finetuned_32.onnx", {
+    const s = await ortMod.InferenceSession.create("/trio_finetuned_32.onnx", {
       executionProviders: ["webgpu", "wasm"],
     });
 
