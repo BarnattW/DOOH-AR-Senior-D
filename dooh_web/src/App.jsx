@@ -4,6 +4,7 @@ import { useDetectorMode } from "./hooks/useDetectorMode";
 import { useGeolocation } from "./hooks/useGeolocation";
 import { useDetectionLoop } from "./hooks/useDetectionLoop";
 import { usePixiOverlay } from "./hooks/usePixiOverlay";
+import { DetectionOverlay } from "./components/ar/DetectionOverlay";
 import { isNearLandmark } from "./util/geolocation";
 import { FILTERS, DEFAULT_FILTER_ID } from "./filters";
 import LocationStatus from "./components/LocationStatus";
@@ -17,6 +18,7 @@ export default function App() {
   // ── Refs ──────────────────────────────────────────────────────────────────
   const pixiCanvasRef     = useRef(null);
   const lastDetectionsRef = useRef([]);
+  const [detections, setDetections] = useState([]); // For DetectionOverlay
 
   // ── Camera ────────────────────────────────────────────────────────────────
   const { videoRef, isRunning, startWebcam, stopWebcam, zoom, setZoom, zoomCaps } = useCamera();
@@ -62,6 +64,7 @@ export default function App() {
     detect,
     onDetections: (formatted) => {
       lastDetectionsRef.current = formatted;
+      setDetections(formatted);
     },
   });
 
@@ -91,6 +94,9 @@ export default function App() {
               transformOrigin: "center center",
             }}
           />
+
+          {/* Detection overlay with clickable "Learn more" buttons */}
+          <DetectionOverlay detections={detections} containerRef={pixiCanvasRef} />
 
           <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/55 via-transparent via-35% to-black/75" />
 
