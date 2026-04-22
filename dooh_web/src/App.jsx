@@ -13,12 +13,19 @@ import FilterPicker from "./components/FilterPicker";
 
 const EMPIRE_STATE = { lat: 40.748817, lng: -73.985428 };
 const RADIUS_M = 5000;
+const AR_CONFIRM_HOLD_MS = 2200;
 
 export default function App() {
   // ── Refs ──────────────────────────────────────────────────────────────────
   const pixiCanvasRef     = useRef(null);
   const lastDetectionsRef = useRef([]);
-  const [detections, setDetections] = useState([]); // For DetectionOverlay
+  const latestRawDetectionsRef = useRef([]);
+  const holdTimerRef = useRef(null);
+  const [rawDetections, setRawDetections] = useState([]);
+  const [detections, setDetections] = useState([]); // Confirmed detections for AR
+  const [pendingLabel, setPendingLabel] = useState(null);
+  const [holdProgress, setHoldProgress] = useState(0);
+  const [hasCompletedIntroPrompt, setHasCompletedIntroPrompt] = useState(false);
 
   // ── Camera ────────────────────────────────────────────────────────────────
   const { videoRef, isRunning, startWebcam, stopWebcam, zoom, setZoom, zoomCaps } = useCamera();
@@ -45,6 +52,85 @@ export default function App() {
     if (f) activeFilterRef.current = f;
   }, [activeFilterId]);
 
+  useEffect(() => {
+    lastDetectionsRef.current = detections;
+  }, [detections]);
+
+  useEffect(() => {
+    latestRawDetectionsRef.current = rawDetections;
+  }, [rawDetections]);
+
+  useEffect(() => {
+    const nextDetection = rawDetections[0];
+    const nextLabel = nextDetection?.label ?? null;
+
+    if (hasCompletedIntroPrompt) {
+      if (holdTimerRef.current) {
+        clearInterval(holdTimerRef.current);
+        holdTimerRef.current = null;
+      }
+      if (pendingLabel !== null) setPendingLabel(null);
+      if (holdProgress !== 0 && holdProgress !== 1) setHoldProgress(1);
+      if (detections !== rawDetections) setDetections(rawDetections);
+      return;
+    }
+
+    if (!nextLabel) {
+      if (holdTimerRef.current) {
+        clearInterval(holdTimerRef.current);
+        holdTimerRef.current = null;
+      }
+      if (pendingLabel !== null) setPendingLabel(null);
+      if (holdProgress !== 0) setHoldProgress(0);
+      if (detections.length > 0) setDetections([]);
+      return;
+    }
+
+    if (detections[0]?.label === nextLabel) {
+      if (detections !== rawDetections) setDetections(rawDetections);
+      if (pendingLabel !== null) setPendingLabel(null);
+      if (holdProgress !== 1) setHoldProgress(1);
+      return;
+    }
+
+    if (pendingLabel !== nextLabel) {
+      if (holdTimerRef.current) {
+        clearInterval(holdTimerRef.current);
+      }
+
+      const startedAt = Date.now();
+      setPendingLabel(nextLabel);
+      setHoldProgress(0);
+      setDetections([]);
+
+      holdTimerRef.current = setInterval(() => {
+        const elapsed = Date.now() - startedAt;
+        const progress = Math.min(1, elapsed / AR_CONFIRM_HOLD_MS);
+        setHoldProgress(progress);
+
+        if (elapsed >= AR_CONFIRM_HOLD_MS) {
+          clearInterval(holdTimerRef.current);
+          holdTimerRef.current = null;
+          setHasCompletedIntroPrompt(true);
+          setPendingLabel(null);
+          setDetections((current) => {
+            const latestDetections = latestRawDetectionsRef.current;
+            const latestLabel = latestDetections[0]?.label;
+            return latestLabel === nextLabel ? latestDetections : current;
+          });
+        }
+      }, 100);
+    }
+  }, [rawDetections, pendingLabel, detections, holdProgress, hasCompletedIntroPrompt]);
+
+  useEffect(() => {
+    return () => {
+      if (holdTimerRef.current) {
+        clearInterval(holdTimerRef.current);
+      }
+    };
+  }, []);
+
   // ── PixiJS overlay ────────────────────────────────────────────────────────
   usePixiOverlay({
     canvasRef: pixiCanvasRef,
@@ -62,13 +148,13 @@ export default function App() {
     canvasRef: pixiCanvasRef,
     detect,
     onDetections: (formatted) => {
-      lastDetectionsRef.current = formatted;
-      setDetections(formatted);
+      setRawDetections(formatted);
     },
   });
 
   const canStart = !isRunning;
   const detectionReady = !!session && !geoLoading && !geoError && !!near?.ok;
+  const showHoldPrompt = !hasCompletedIntroPrompt && !!pendingLabel && detections.length === 0;
 
   const handleStart = async () => {
     await startWebcam();
@@ -96,6 +182,31 @@ export default function App() {
 
           {/* Detection overlay with clickable "Learn more" buttons */}
           <DetectionOverlay detections={detections} containerRef={pixiCanvasRef} />
+
+          {showHoldPrompt && (
+            <div className="pointer-events-none absolute inset-x-4 top-1/2 z-20 -translate-y-1/2 sm:inset-x-8">
+              <div className="mx-auto max-w-sm rounded-3xl border border-white/15 bg-black/65 px-5 py-5 text-center shadow-2xl backdrop-blur-md">
+                <div className="text-[10px] font-semibold uppercase tracking-[0.35em] text-white/55">
+                  Hold Camera Steady
+                </div>
+                <div className="mt-2 text-lg font-semibold text-white">
+                  Keep the building centered for a moment
+                </div>
+                <div className="mt-2 text-sm leading-6 text-white/75">
+                  Point your phone at {pendingLabel} and hold still while we lock the AR effect.
+                </div>
+                <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/10">
+                  <div
+                    className="h-full rounded-full bg-gradient-to-r from-sky-400 to-cyan-300 transition-all duration-100"
+                    style={{ width: `${Math.round(holdProgress * 100)}%` }}
+                  />
+                </div>
+                <div className="mt-2 text-xs uppercase tracking-[0.28em] text-white/45">
+                  Stabilizing AR
+                </div>
+              </div>
+            </div>
+          )}
 
           <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/55 via-transparent via-35% to-black/75" />
 
