@@ -66,5 +66,5 @@ export function draw3d(scene3d, detections, time) {
   const model = scene3d.addChild(PIXI3D.Model.from(kingKongGltf));
   model.position.set(worldPos.x, worldPos.y, worldPos.z);
   model.scale.set(modelScale);
-  model.rotationQuaternion.setEulerAngles(0, time * 20, 0);
+  model.rotationQuaternion.setEulerAngles(0, 0, 0);
 }
