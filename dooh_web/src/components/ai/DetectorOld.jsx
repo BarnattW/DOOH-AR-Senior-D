@@ -9,7 +9,7 @@ let sessionPromise = null;
 const NUM_FEATURES = 39;
 const LETTERBOX_SIZE = 640;
 const TOP_K = 200;
-const CONF_THRESH = 0.6;
+const CONF_THRESH = 0.55;
 
 // Must match package.json `onnxruntime-web` version (WASM files load from CDN)
 const ORT_WASM_VERSION = "1.22.0";

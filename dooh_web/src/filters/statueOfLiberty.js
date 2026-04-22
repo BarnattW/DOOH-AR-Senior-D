@@ -2,7 +2,7 @@ import * as PIXI from 'pixi.js';
 import * as PIXI3D from 'pixi3d/pixi7';
 
 export const id = 'statue-of-liberty';
-export const label = 'Statue of Liberty';
+export const label = 'Statue';
 
 const STATUE_MODEL_PATH = '/assets/statue_of_liberty/scene.gltf';
 const MODEL_DEPTH = 4.2;
