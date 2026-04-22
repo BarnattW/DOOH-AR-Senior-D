@@ -40,7 +40,6 @@ export default function App() {
   // ── Active filter — state drives UI, ref drives render loop (zero re-renders) ──
   const [activeFilterId, setActiveFilterId] = useState(DEFAULT_FILTER_ID);
   const activeFilterRef = useRef(FILTERS.find(f => f.id === DEFAULT_FILTER_ID));
-
   useEffect(() => {
     const f = FILTERS.find(f => f.id === activeFilterId);
     if (f) activeFilterRef.current = f;

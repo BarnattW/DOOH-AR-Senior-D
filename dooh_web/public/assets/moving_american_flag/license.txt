@@ -1,0 +1,11 @@
+Model Information:
+* title:	Moving American Flag
+* source:	https://sketchfab.com/3d-models/moving-american-flag-dc3dc2dc6faa4e348bdda0f94809ab35
+* author:	Designed By Jonathan (https://sketchfab.com/designedbyjonathan)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Moving American Flag" (https://sketchfab.com/3d-models/moving-american-flag-dc3dc2dc6faa4e348bdda0f94809ab35) by Designed By Jonathan (https://sketchfab.com/designedbyjonathan) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
