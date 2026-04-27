@@ -179,5 +179,8 @@ export function useDetector() {
     }
   }, [connect]);
 
-  return { session, detect };
+  return {
+    session,
+    detect,
+  };
 }

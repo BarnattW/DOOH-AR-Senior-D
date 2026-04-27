@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState, useEffect, useCallback } from "react";
 import { Camera, useCamera } from "./components/camera/Camera";
 import { useDetectorMode } from "./hooks/useDetectorMode";
 import { useGeolocation } from "./hooks/useGeolocation";
@@ -12,6 +12,7 @@ import LocationStatus from "./components/LocationStatus";
 import CameraControls from "./components/CameraControls";
 import FilterPicker from "./components/FilterPicker";
 import PhotoLibrary from "./components/PhotoLibrary";
+import PostcardEditor from "./components/PostcardEditor";
 import StartPanel from "./components/StartPanel";
 
 const EMPIRE_STATE = { lat: 40.748817, lng: -73.985428 };
@@ -20,15 +21,17 @@ const AR_CONFIRM_HOLD_MS = 2200;
 
 export default function App() {
   // ── Refs ──────────────────────────────────────────────────────────────────
-  const pixiCanvasRef     = useRef(null);
-  const lastDetectionsRef = useRef([]);
+  const pixiCanvasRef          = useRef(null);
+  const lastDetectionsRef      = useRef([]);
   const latestRawDetectionsRef = useRef([]);
-  const holdTimerRef = useRef(null);
-  const [rawDetections, setRawDetections] = useState([]);
-  const [detections, setDetections] = useState([]); // Confirmed detections for AR
-  const [pendingLabel, setPendingLabel] = useState(null);
-  const [holdProgress, setHoldProgress] = useState(0);
-  const [hasCompletedIntroPrompt, setHasCompletedIntroPrompt] = useState(false);
+  const holdTimerRef           = useRef(null);
+
+  // ── Detection state ───────────────────────────────────────────────────────
+  const [rawDetections,            setRawDetections]            = useState([]);
+  const [detections,               setDetections]               = useState([]);
+  const [pendingLabel,             setPendingLabel]             = useState(null);
+  const [holdProgress,             setHoldProgress]             = useState(0);
+  const [hasCompletedIntroPrompt,  setHasCompletedIntroPrompt]  = useState(false);
 
   // ── Camera ────────────────────────────────────────────────────────────────
   const { videoRef, isRunning, startWebcam, stopWebcam, zoom, setZoom, zoomCaps } = useCamera();
@@ -55,6 +58,7 @@ export default function App() {
     if (f) activeFilterRef.current = f;
   }, [activeFilterId]);
 
+  // Keep PixiJS ref in sync with confirmed detections
   useEffect(() => {
     lastDetectionsRef.current = detections;
   }, [detections]);
@@ -63,15 +67,13 @@ export default function App() {
     latestRawDetectionsRef.current = rawDetections;
   }, [rawDetections]);
 
+  // ── Hold-to-confirm AR detection logic ───────────────────────────────────
   useEffect(() => {
     const nextDetection = rawDetections[0];
     const nextLabel = nextDetection?.label ?? null;
 
     if (hasCompletedIntroPrompt) {
-      if (holdTimerRef.current) {
-        clearInterval(holdTimerRef.current);
-        holdTimerRef.current = null;
-      }
+      if (holdTimerRef.current) { clearInterval(holdTimerRef.current); holdTimerRef.current = null; }
       if (pendingLabel !== null) setPendingLabel(null);
       if (holdProgress !== 0 && holdProgress !== 1) setHoldProgress(1);
       if (detections !== rawDetections) setDetections(rawDetections);
@@ -79,10 +81,7 @@ export default function App() {
     }
 
     if (!nextLabel) {
-      if (holdTimerRef.current) {
-        clearInterval(holdTimerRef.current);
-        holdTimerRef.current = null;
-      }
+      if (holdTimerRef.current) { clearInterval(holdTimerRef.current); holdTimerRef.current = null; }
       if (pendingLabel !== null) setPendingLabel(null);
       if (holdProgress !== 0) setHoldProgress(0);
       if (detections.length > 0) setDetections([]);
@@ -97,9 +96,7 @@ export default function App() {
     }
 
     if (pendingLabel !== nextLabel) {
-      if (holdTimerRef.current) {
-        clearInterval(holdTimerRef.current);
-      }
+      if (holdTimerRef.current) clearInterval(holdTimerRef.current);
 
       const startedAt = Date.now();
       setPendingLabel(nextLabel);
@@ -127,11 +124,7 @@ export default function App() {
   }, [rawDetections, pendingLabel, detections, holdProgress, hasCompletedIntroPrompt]);
 
   useEffect(() => {
-    return () => {
-      if (holdTimerRef.current) {
-        clearInterval(holdTimerRef.current);
-      }
-    };
+    return () => { if (holdTimerRef.current) clearInterval(holdTimerRef.current); };
   }, []);
 
   // ── PixiJS overlay ────────────────────────────────────────────────────────
@@ -160,6 +153,7 @@ export default function App() {
     latestPhoto,
     isLibraryOpen,
     capturePhoto,
+    addPhoto,
     openLibrary,
     closeLibrary,
   } = usePhotoLibrary({
@@ -167,6 +161,16 @@ export default function App() {
     zoom,
     zoomCaps,
   });
+
+  const [postcardPhoto, setPostcardPhoto] = useState(null);
+
+  const handleCapture = useCallback(() => {
+    capturePhoto({
+      detectedBuilding: lastDetectionsRef.current[0]?.label ?? null,
+      filterLabel: FILTERS.find((f) => f.id === activeFilterId)?.label ?? null,
+      locationLabel: near ? "New York City, NY" : null,
+    });
+  }, [capturePhoto, activeFilterId, near]);
 
   const canStart = !isRunning;
   const detectionReady = !!session && !geoLoading && !geoError && !!near?.ok;
@@ -272,7 +276,7 @@ export default function App() {
                 <CameraControls
                   onStart={handleStart}
                   onStop={stopWebcam}
-                  onCapture={capturePhoto}
+                  onCapture={handleCapture}
                   lastPhoto={latestPhoto}
                   onOpenLibrary={openLibrary}
                   canStart={canStart}
@@ -287,7 +291,28 @@ export default function App() {
           </div>
 
           {isLibraryOpen && (
-            <PhotoLibrary photos={photos} onClose={closeLibrary} />
+            <PhotoLibrary
+              photos={photos}
+              onClose={closeLibrary}
+              onPostcard={(photo) => {
+                closeLibrary();
+                setPostcardPhoto(photo);
+              }}
+            />
+          )}
+
+          {postcardPhoto && (
+            <PostcardEditor
+              photo={postcardPhoto}
+              onClose={() => setPostcardPhoto(null)}
+              onSaveToLibrary={(blob) => {
+                addPhoto(blob, {
+                  detectedBuilding: postcardPhoto.detectedBuilding,
+                  filterLabel: "Postcard",
+                  locationLabel: postcardPhoto.locationLabel,
+                });
+              }}
+            />
           )}
         </div>
       </div>

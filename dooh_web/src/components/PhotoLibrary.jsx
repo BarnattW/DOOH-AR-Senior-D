@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 
-export default function PhotoLibrary({ photos, onClose }) {
+export default function PhotoLibrary({ photos, onClose, onPostcard }) {
   const [selectedPhotoId, setSelectedPhotoId] = useState(photos[0]?.id ?? null);
   const selectedPhoto = useMemo(
     () => photos.find((photo) => photo.id === selectedPhotoId) ?? photos[0],
@@ -49,13 +49,22 @@ export default function PhotoLibrary({ photos, onClose }) {
               <div className="text-xs text-white/55">
                 {selectedPhoto.capturedAt.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
               </div>
-              <a
-                href={selectedPhoto.url}
-                download={`dooh-ar-${formatPhotoTimestamp(selectedPhoto.capturedAt)}.png`}
-                className="rounded-full bg-white px-5 py-2 text-sm font-semibold text-black"
-              >
-                Download
-              </a>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => onPostcard?.(selectedPhoto)}
+                  className="rounded-full border border-white/20 bg-white/10 px-5 py-2 text-sm font-semibold text-white backdrop-blur-md transition active:scale-95"
+                >
+                  Postcard
+                </button>
+                <a
+                  href={selectedPhoto.url}
+                  download={`dooh-ar-${formatPhotoTimestamp(selectedPhoto.capturedAt)}.png`}
+                  className="rounded-full bg-white px-5 py-2 text-sm font-semibold text-black"
+                >
+                  Download
+                </a>
+              </div>
             </div>
             <div className="grid max-h-24 grid-flow-col auto-cols-[5rem] gap-2 overflow-x-auto pb-1 scrollbar-hide">
               {photos.map((photo) => (
