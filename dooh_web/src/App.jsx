@@ -1,4 +1,5 @@
 import { useRef, useState, useEffect, useCallback } from "react";
+import { useArStore } from "./store/arStore";
 import { Camera, useCamera } from "./components/camera/Camera";
 import { useDetectorMode } from "./hooks/useDetectorMode";
 import { useGeolocation } from "./hooks/useGeolocation";
@@ -18,21 +19,16 @@ import TutorialCard from "./components/onboarding/TutorialCard";
 
 const EMPIRE_STATE = { lat: 40.748817, lng: -73.985428 };
 const RADIUS_M = 5000;
-const AR_CONFIRM_HOLD_MS = 2200;
 
 export default function App() {
   // ── Refs ──────────────────────────────────────────────────────────────────
-  const pixiCanvasRef          = useRef(null);
-  const lastDetectionsRef      = useRef([]);
-  const latestRawDetectionsRef = useRef([]);
-  const holdTimerRef           = useRef(null);
+  const pixiCanvasRef     = useRef(null);
+  const lastDetectionsRef = useRef([]);
 
-  // ── Detection state ───────────────────────────────────────────────────────
-  const [rawDetections,            setRawDetections]            = useState([]);
-  const [detections,               setDetections]               = useState([]);
-  const [pendingLabel,             setPendingLabel]             = useState(null);
-  const [holdProgress,             setHoldProgress]             = useState(0);
-  const [hasCompletedIntroPrompt,  setHasCompletedIntroPrompt]  = useState(false);
+  // ── AR state (idle → glitching → tracking → idle) ────────────────────────
+  const arState      = useArStore((s) => s.arState);
+  const detections   = useArStore((s) => s.detections);
+  const onDetections = useArStore((s) => s.onDetections);
 
   // ── Camera ────────────────────────────────────────────────────────────────
   const { videoRef, isRunning, startWebcam, stopWebcam, zoom, setZoom, zoomCaps } = useCamera();
@@ -54,139 +50,67 @@ export default function App() {
   // ── Active filter — state drives UI, ref drives render loop (zero re-renders) ──
   const [activeFilterId, setActiveFilterId] = useState(DEFAULT_FILTER_ID);
   const activeFilterRef = useRef(FILTERS.find(f => f.id === DEFAULT_FILTER_ID));
-  useEffect(() => {
-    if (pendingLabel) {
-      const glitchFilter = FILTERS.find(f => f.id === 'glitch');
-      if (glitchFilter) activeFilterRef.current = glitchFilter;
-    } else {
-      const f = FILTERS.find(f => f.id === activeFilterId);
-      if (f) activeFilterRef.current = f;
-    }
-  }, [activeFilterId, pendingLabel]);
 
-  // Keep PixiJS ref in sync with confirmed detections
+  useEffect(() => {
+    const f = arState === "glitching"
+      ? FILTERS.find(f => f.id === "glitch")
+      : FILTERS.find(f => f.id === activeFilterId);
+    if (f) activeFilterRef.current = f;
+  }, [arState, activeFilterId]);
+
+  // Keep PixiJS ref in sync with detections from store
   useEffect(() => {
     lastDetectionsRef.current = detections;
   }, [detections]);
 
-  useEffect(() => {
-    latestRawDetectionsRef.current = rawDetections;
-  }, [rawDetections]);
-
-  // ── Hold-to-confirm AR detection logic ───────────────────────────────────
-  useEffect(() => {
-    const nextDetection = rawDetections[0];
-    const nextLabel = nextDetection?.label ?? null;
-
-    if (hasCompletedIntroPrompt) {
-      if (holdTimerRef.current) { clearInterval(holdTimerRef.current); holdTimerRef.current = null; }
-      if (pendingLabel !== null) setPendingLabel(null);
-      if (holdProgress !== 0 && holdProgress !== 1) setHoldProgress(1);
-      if (detections !== rawDetections) setDetections(rawDetections);
-      return;
-    }
-
-    if (!nextLabel) {
-      if (holdTimerRef.current) { clearInterval(holdTimerRef.current); holdTimerRef.current = null; }
-      if (pendingLabel !== null) setPendingLabel(null);
-      if (holdProgress !== 0) setHoldProgress(0);
-      if (detections.length > 0) setDetections([]);
-      return;
-    }
-
-    if (detections[0]?.label === nextLabel) {
-      if (detections !== rawDetections) setDetections(rawDetections);
-      if (pendingLabel !== null) setPendingLabel(null);
-      if (holdProgress !== 1) setHoldProgress(1);
-      return;
-    }
-
-    if (pendingLabel !== nextLabel) {
-      if (holdTimerRef.current) clearInterval(holdTimerRef.current);
-
-      const startedAt = Date.now();
-      setPendingLabel(nextLabel);
-      setHoldProgress(0);
-      setDetections([]);
-
-      holdTimerRef.current = setInterval(() => {
-        const elapsed = Date.now() - startedAt;
-        const progress = Math.min(1, elapsed / AR_CONFIRM_HOLD_MS);
-        setHoldProgress(progress);
-
-        if (elapsed >= AR_CONFIRM_HOLD_MS) {
-          clearInterval(holdTimerRef.current);
-          holdTimerRef.current = null;
-          setHasCompletedIntroPrompt(true);
-          setPendingLabel(null);
-          setDetections((current) => {
-            const latestDetections = latestRawDetectionsRef.current;
-            const latestLabel = latestDetections[0]?.label;
-            return latestLabel === nextLabel ? latestDetections : current;
-          });
-        }
-      }, 100);
-    }
-  }, [rawDetections, pendingLabel, detections, holdProgress, hasCompletedIntroPrompt]);
-
-  useEffect(() => {
-    return () => { if (holdTimerRef.current) clearInterval(holdTimerRef.current); };
-  }, []);
-
   // ── PixiJS overlay ────────────────────────────────────────────────────────
-  const isHoldingRef = useRef(false);
-  useEffect(() => {
-    isHoldingRef.current = !!pendingLabel;
-  }, [pendingLabel]);
-
   usePixiOverlay({
     canvasRef: pixiCanvasRef,
     videoRef,
     isRunning,
     lastDetectionsRef,
     activeFilterRef,
-    isHoldingRef,
   });
 
   // ── Tutorial ──────────────────────────────────────────────────────────────
-  // 0=point, 1=detect/hold, 2=explore filters, 3=done
-  const [tutorialStep, setTutorialStep] = useState(
-    () => localStorage.getItem("dooh_onboarde") === "true" ? 3 : 0
-  );
-  const hasSeenDetectionRef = useRef(false);
+  // 0=point, 1=glitching, 2=explore filters, 3=done
+  const [tutorialStep, setTutorialStep] = useState(() => {
+    const stored = localStorage.getItem("dooh_onboarded");
+    console.log("[tutorial] init — localStorage dooh_onboarded:", stored);
+    return stored === "true" ? 3 : 0;
+  });
 
   const skipTutorial = useCallback(() => {
+    console.trace("[tutorial] skipTutorial called");
     localStorage.setItem("dooh_onboarded", "true");
     setTutorialStep(3);
   }, []);
 
-  // Step 0 → 1: first detection fires
+  // debug
   useEffect(() => {
-    if (tutorialStep === 0 && rawDetections.length > 0 && !hasSeenDetectionRef.current) {
-      hasSeenDetectionRef.current = true;
-      setTutorialStep(1);
-    }
-  }, [rawDetections, tutorialStep]);
+    console.log("[tutorial] tutorialStep changed →", tutorialStep);
+  }, [tutorialStep]);
 
-  // Step 1 → 2: hold timer completes (AR locked)
   useEffect(() => {
-    if (tutorialStep === 1 && hasCompletedIntroPrompt) {
-      setTutorialStep(2);
-    }
-  }, [hasCompletedIntroPrompt, tutorialStep]);
+    console.log("[tutorial] detections changed, length:", detections.length, "| tutorialStep:", tutorialStep);
+  }, [detections, tutorialStep]);
 
-  // Step 2 → 3: user selects any filter
+  // Step 0 → 1: first positive detection
+  useEffect(() => {
+    console.log("[tutorial] 0→1 effect: tutorialStep:", tutorialStep, "| detections.length:", detections.length);
+    if (tutorialStep !== 0 || detections.length === 0) return;
+    console.log("[tutorial] firing setTutorialStep(1)");
+    setTutorialStep(1);
+  }, [detections, tutorialStep]);
+
+
+  // Step 2 → 3: user picks any filter
   const prevFilterIdRef = useRef(activeFilterId);
   useEffect(() => {
-    if (tutorialStep === 2 && activeFilterId !== prevFilterIdRef.current) {
-      skipTutorial();
-    }
+    if (tutorialStep !== 2) return;
+    if (activeFilterId !== prevFilterIdRef.current) skipTutorial();
     prevFilterIdRef.current = activeFilterId;
   }, [activeFilterId, tutorialStep, skipTutorial]);
-
-  const handleDetections = useCallback((formatted) => {
-    setRawDetections(formatted);
-  }, []);
 
   // ── Detection loop ────────────────────────────────────────────────────────
   useDetectionLoop({
@@ -195,7 +119,7 @@ export default function App() {
     videoRef,
     canvasRef: pixiCanvasRef,
     detect,
-    onDetections: handleDetections,
+    onDetections,
   });
 
   const {
@@ -223,12 +147,6 @@ export default function App() {
   }, [capturePhoto, activeFilterId, near]);
 
   const canStart = !isRunning;
-  const detectionReady = !!session && !geoLoading && !geoError && !!near?.ok;
-  const showHoldPrompt = !hasCompletedIntroPrompt && !!pendingLabel && detections.length === 0;
-
-  const handleStart = async () => {
-    await startWebcam();
-  };
 
   return (
     <div className="h-screen overflow-hidden bg-black text-white supports-[height:100dvh]:h-[100dvh]">
@@ -252,31 +170,6 @@ export default function App() {
 
           {/* Detection overlay with clickable "Learn more" buttons */}
           <DetectionOverlay detections={detections} containerRef={pixiCanvasRef} />
-
-          {showHoldPrompt && (
-            <div className="pointer-events-none absolute inset-x-4 top-1/2 z-20 -translate-y-1/2 sm:inset-x-8">
-              <div className="mx-auto max-w-sm rounded-3xl border border-white/15 bg-black/65 px-5 py-5 text-center shadow-2xl backdrop-blur-md">
-                <div className="text-[10px] font-semibold uppercase tracking-[0.35em] text-white/55">
-                  Hold Camera Steady
-                </div>
-                <div className="mt-2 text-lg font-semibold text-white">
-                  Keep the building centered for a moment
-                </div>
-                <div className="mt-2 text-sm leading-6 text-white/75">
-                  Point your phone at {pendingLabel} and hold still while we lock the AR effect.
-                </div>
-                <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/10">
-                  <div
-                    className="h-full rounded-full bg-gradient-to-r from-sky-400 to-cyan-300 transition-all duration-100"
-                    style={{ width: `${Math.round(holdProgress * 100)}%` }}
-                  />
-                </div>
-                <div className="mt-2 text-xs uppercase tracking-[0.28em] text-white/45">
-                  Stabilizing AR
-                </div>
-              </div>
-            </div>
-          )}
 
           <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/55 via-transparent via-35% to-black/75" />
 
@@ -316,7 +209,7 @@ export default function App() {
                 geoLoading={geoLoading}
                 geoError={geoError}
                 modelReady={!!session}
-                onStart={handleStart}
+                onStart={startWebcam}
               />
             )}
 
@@ -324,7 +217,7 @@ export default function App() {
               <>
                 <FilterPicker activeId={activeFilterId} onSelect={setActiveFilterId} pulsing={tutorialStep === 2} />
                 <CameraControls
-                  onStart={handleStart}
+                  onStart={startWebcam}
                   onStop={stopWebcam}
                   onCapture={handleCapture}
                   lastPhoto={latestPhoto}
@@ -377,9 +270,17 @@ export default function App() {
               <TutorialCard
                 title="Point at a building"
                 description="Aim your camera at the Empire State Building, Hudson Yards, or One World Trade Center."
-                onSkip={skipTutorial}
               />
             </>
+          )}
+
+          {/* Step 1 — building detected, AR locking on */}
+          {tutorialStep === 1 && isRunning && (
+            <TutorialCard
+              title="Building detected!"
+              description="The AR is locking on. Hold steady while the effect activates."
+              onNext={() => setTutorialStep(2)}
+            />
           )}
 
           {/* Step 2 — filter glow + explore card */}
@@ -388,7 +289,7 @@ export default function App() {
               title="Try a filter"
               description="Swipe the filter strip below and tap one to apply an AR effect to the building."
               position="bottom"
-              onSkip={skipTutorial}
+              onNext={skipTutorial}
             />
           )}
         </div>

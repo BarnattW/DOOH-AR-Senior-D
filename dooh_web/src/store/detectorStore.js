@@ -37,6 +37,7 @@ export const useDetectorStore = create((set, get) => ({
         const entry = pending.get(data.id);
         if (entry) {
           pending.delete(data.id);
+          if (data.error) console.error("[detect] worker inference error:", data.error);
           entry.resolve(data);
         }
       }

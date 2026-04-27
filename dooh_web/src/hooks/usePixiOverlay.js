@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import * as PIXI from 'pixi.js';
 import * as PIXI3D from 'pixi3d/pixi7';
 
-export function usePixiOverlay({ canvasRef: containerRef, videoRef, isRunning, lastDetectionsRef, activeFilterRef, isHoldingRef }) {
+export function usePixiOverlay({ canvasRef: containerRef, videoRef, isRunning, lastDetectionsRef, activeFilterRef }) {
   const appRef = useRef(null);
   const filterCacheRef = useRef({});
   const preloadCacheRef = useRef({});
@@ -96,6 +96,16 @@ export function usePixiOverlay({ canvasRef: containerRef, videoRef, isRunning, l
       const textContainer = new PIXI.Container();
       app.stage.addChild(textContainer);
 
+      // Smoothed box — lerps toward a velocity-extrapolated target every frame
+      let smoothBox = null;
+      const LERP = 0.18;
+      const EXTRAPOLATE_MAX_MS = 400;
+
+      let prevRawBox = null;
+      let prevRawTime = 0;
+      let velocity = { dx1: 0, dy1: 0, dx2: 0, dy2: 0 };
+      let extrapolatedBox = null;
+
       app.ticker.add(() => {
         const time = app.ticker.lastTime / 1000;
         const detections = lastDetectionsRef.current;
@@ -115,13 +125,55 @@ export function usePixiOverlay({ canvasRef: containerRef, videoRef, isRunning, l
           effectSprite.filters = [];
         }
 
+        const rawTarget = detections.length > 0 ? detections[0].box : null;
+        const now = performance.now();
+        const delta = app.ticker.deltaMS;
+
+        if (rawTarget) {
+          if (prevRawBox && prevRawTime > 0) {
+            const dt = now - prevRawTime;
+            if (dt > 16 && dt < 1000) {
+              velocity.dx1 = (rawTarget.x1 - prevRawBox.x1) / dt;
+              velocity.dy1 = (rawTarget.y1 - prevRawBox.y1) / dt;
+              velocity.dx2 = (rawTarget.x2 - prevRawBox.x2) / dt;
+              velocity.dy2 = (rawTarget.y2 - prevRawBox.y2) / dt;
+            }
+          }
+          prevRawBox = { ...rawTarget };
+          prevRawTime = now;
+          extrapolatedBox = { ...rawTarget };
+        } else if (extrapolatedBox && prevRawTime > 0) {
+          if (now - prevRawTime < EXTRAPOLATE_MAX_MS) {
+            extrapolatedBox.x1 += velocity.dx1 * delta;
+            extrapolatedBox.y1 += velocity.dy1 * delta;
+            extrapolatedBox.x2 += velocity.dx2 * delta;
+            extrapolatedBox.y2 += velocity.dy2 * delta;
+          } else {
+            extrapolatedBox = null;
+          }
+        }
+
+        const targetBox = extrapolatedBox;
+
+        if (targetBox) {
+          if (!smoothBox) {
+            smoothBox = { ...targetBox };
+          } else {
+            smoothBox.x1 += (targetBox.x1 - smoothBox.x1) * LERP;
+            smoothBox.y1 += (targetBox.y1 - smoothBox.y1) * LERP;
+            smoothBox.x2 += (targetBox.x2 - smoothBox.x2) * LERP;
+            smoothBox.y2 += (targetBox.y2 - smoothBox.y2) * LERP;
+          }
+        } else {
+          smoothBox = null;
+          prevRawBox = null;
+          prevRawTime = 0;
+          velocity = { dx1: 0, dy1: 0, dx2: 0, dy2: 0 };
+        }
+
         maskGfx.clear();
-        if (isHoldingRef?.current) {
-          maskGfx.beginFill(0xffffff);
-          maskGfx.drawRect(0, 0, width, height);
-          maskGfx.endFill();
-        } else if (detections.length > 0) {
-          const { x1, y1, x2, y2 } = detections[0].box;
+        if (smoothBox) {
+          const { x1, y1, x2, y2 } = smoothBox;
           maskGfx.beginFill(0xffffff);
           maskGfx.drawRect(x1, y1, x2 - x1, y2 - y1);
           maskGfx.endFill();

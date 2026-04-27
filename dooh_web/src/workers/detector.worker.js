@@ -9,10 +9,19 @@ let session = null;
 (async () => {
   try {
     ort.env.wasm.wasmPaths = WASM_CDN_BASE;
-    ort.env.wasm.numThreads = 1;
+    // Multi-threading requires crossOriginIsolated (COOP/COEP headers)
+    ort.env.wasm.numThreads = self.crossOriginIsolated ? (navigator.hardwareConcurrency ?? 4) : 1;
+
+    // WebNN uses the browser's native ML stack (Chrome 121+ / Edge) — better op
+    // coverage than WebGPU EP and hardware-accelerated. Falls back to WASM.
+    const providers = typeof navigator !== "undefined" && "ml" in navigator
+      ? ["webnn", "wasm"]
+      : ["wasm"];
+
     session = await ort.InferenceSession.create("/trio_finetuned_32.onnx", {
-      executionProviders: ["wasm"],
+      executionProviders: providers,
     });
+    console.log("[worker] session ready — EP:", providers[0], "| threads:", ort.env.wasm.numThreads, "| outputs:", session.outputNames);
     postMessage({ type: "ready" });
   } catch (e) {
     postMessage({ type: "error", message: e.message });
@@ -35,6 +44,7 @@ self.onmessage = async ({ data }) => {
       [resultData.buffer]
     );
   } catch (e) {
+    console.error("[worker] inference error:", e.message);
     postMessage({ type: "result", id: data.id, outputData: null, error: e.message });
   }
 };
