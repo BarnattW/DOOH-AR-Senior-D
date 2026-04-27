@@ -98,7 +98,7 @@ export function usePixiOverlay({ canvasRef: containerRef, videoRef, isRunning, l
 
       // Smoothed box — lerps toward a velocity-extrapolated target every frame
       let smoothBox = null;
-      const LERP = 0.18;
+      const LERP = 0.28;
       const EXTRAPOLATE_MAX_MS = 400;
 
       let prevRawBox = null;

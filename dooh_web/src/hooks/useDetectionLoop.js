@@ -6,10 +6,8 @@ const MAX_DETECTIONS = 1;
 const DETECTION_HOLD_MS = 150;
 const DETECTION_MAX_AGE_MS = 2500;
 
-/**
- * Runs object detection as fast as the model allows (tight async loop, no idle gap).
- * Uses a "latest wins" pattern — stale results are silently discarded.
- */
+const supportsRVFC = "requestVideoFrameCallback" in HTMLVideoElement.prototype;
+
 export function useDetectionLoop({ isRunning, session, videoRef, canvasRef, detect, onDetections }) {
   const latestRequestId = useRef(0);
   const lastStableDetectionsRef = useRef([]);
@@ -20,64 +18,77 @@ export function useDetectionLoop({ isRunning, session, videoRef, canvasRef, dete
 
     let cancelled = false;
     let staleTimer = null;
+    let rvcHandle = null;
 
-    (async () => {
-      while (!cancelled) {
-        if (!videoRef.current?.videoWidth) {
-          await new Promise((r) => setTimeout(r, 16));
-          continue;
-        }
+    const runDetection = async () => {
+      if (cancelled || !videoRef.current?.videoWidth) {
+        scheduleNext();
+        return;
+      }
 
-        const requestId = ++latestRequestId.current;
+      const requestId = ++latestRequestId.current;
 
-        try {
-          const raw = await detect(videoRef.current, canvasRef, null);
+      try {
+        const raw = await detect(videoRef.current, canvasRef, null);
 
-          if (cancelled || requestId !== latestRequestId.current) continue;
+        if (cancelled || requestId !== latestRequestId.current) return;
 
-          const formatted = raw
-            .filter(([, , , , conf]) => conf >= MIN_CONFIDENCE)
-            .slice(0, MAX_DETECTIONS)
-            .map(([x1, y1, x2, y2, conf, classId]) => ({
-              box: { x1, y1, x2, y2 },
-              confidence: conf,
-              classId,
-              label: classId !== undefined
-                ? BUILDING_CLASSES[classId] ?? `Building ${classId}`
-                : "Unknown",
-            }));
+        const formatted = raw
+          .filter(([, , , , conf]) => conf >= MIN_CONFIDENCE)
+          .slice(0, MAX_DETECTIONS)
+          .map(([x1, y1, x2, y2, conf, classId]) => ({
+            box: { x1, y1, x2, y2 },
+            confidence: conf,
+            classId,
+            label: classId !== undefined
+              ? BUILDING_CLASSES[classId] ?? `Building ${classId}`
+              : "Unknown",
+          }));
 
-          if (formatted.length > 0) {
-            clearTimeout(staleTimer);
-            lastStableDetectionsRef.current = formatted;
-            lastDetectionAtRef.current = Date.now();
-            onDetections(formatted);
-            staleTimer = setTimeout(() => {
-              lastStableDetectionsRef.current = [];
-              onDetections([]);
-            }, DETECTION_MAX_AGE_MS);
-            continue;
-          }
-
+        if (formatted.length > 0) {
+          clearTimeout(staleTimer);
+          lastStableDetectionsRef.current = formatted;
+          lastDetectionAtRef.current = Date.now();
+          onDetections(formatted);
+          staleTimer = setTimeout(() => {
+            lastStableDetectionsRef.current = [];
+            onDetections([]);
+          }, DETECTION_MAX_AGE_MS);
+        } else {
           const timeSinceLastDetection = Date.now() - lastDetectionAtRef.current;
-          if (
-            lastStableDetectionsRef.current.length > 0 &&
-            timeSinceLastDetection < DETECTION_HOLD_MS
-          ) {
+          if (lastStableDetectionsRef.current.length > 0 && timeSinceLastDetection < DETECTION_HOLD_MS) {
             onDetections(lastStableDetectionsRef.current);
           } else {
             lastStableDetectionsRef.current = [];
             onDetections([]);
           }
-        } catch (e) {
-          console.error(e);
         }
+      } catch (e) {
+        console.error(e);
       }
-    })();
+
+      if (!cancelled) scheduleNext();
+    };
+
+    const scheduleNext = () => {
+      const video = videoRef.current;
+      if (!video || cancelled) return;
+      if (supportsRVFC) {
+        // fires exactly when a new video frame is available — always fresh, never duplicate
+        rvcHandle = video.requestVideoFrameCallback(runDetection);
+      } else {
+        requestAnimationFrame(runDetection);
+      }
+    };
+
+    scheduleNext();
 
     return () => {
       cancelled = true;
       clearTimeout(staleTimer);
+      if (supportsRVFC && rvcHandle && videoRef.current) {
+        videoRef.current.cancelVideoFrameCallback(rvcHandle);
+      }
       lastStableDetectionsRef.current = [];
       lastDetectionAtRef.current = 0;
     };
