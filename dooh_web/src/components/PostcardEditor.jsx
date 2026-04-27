@@ -13,10 +13,9 @@ function getBuildingName(raw) {
 }
 
 const TEMPLATES = [
-  { id: "classic",   label: "Classic",   bg: "linear-gradient(135deg,#ece3d8 0%,#d8cfc4 100%)" },
-  { id: "panoramic", label: "Panoramic", bg: "linear-gradient(135deg,#d8e4ec 0%,#c4d4e0 100%)" },
-  { id: "print",     label: "Print",     bg: "linear-gradient(135deg,#e8d8be 0%,#d4c4a0 100%)" },
-  { id: "flipped",   label: "Flipped",   bg: "linear-gradient(135deg,#f0ece4 0%,#e4ddd4 100%)" },
+  { id: "split",   label: "Classic",  bg: "linear-gradient(135deg,#ece3d8 0%,#d8cfc4 100%)" },
+  { id: "strip",   label: "Strip",    bg: "linear-gradient(135deg,#d8e4ec 0%,#c4d4e0 100%)" },
+  { id: "border",  label: "Border",   bg: "linear-gradient(135deg,#f0ece4 0%,#e4ddd4 100%)" },
 ];
 
 const W = 1200;
@@ -29,99 +28,33 @@ function ensureFonts() {
     const link = document.createElement("link");
     link.id = "postcard-gfonts";
     link.rel = "stylesheet";
-    link.href = "https://fonts.googleapis.com/css2?family=Caveat:wght@400;700&family=Syne:wght@700&family=DM+Sans:wght@400;500&display=swap";
+    link.href = "https://fonts.googleapis.com/css2?family=Caveat:wght@400;700&family=Syne:wght@700;800&family=DM+Sans:wght@400;500;600&display=swap";
     document.head.appendChild(link);
   }
   _fontsReady = Promise.allSettled([
     document.fonts.load("400 16px Caveat"),
     document.fonts.load("700 16px Caveat"),
-    document.fonts.load("700 16px Syne"),
-    document.fonts.load("500 16px DM Sans"),
+    document.fonts.load("800 16px Syne"),
+    document.fonts.load("600 16px DM Sans"),
   ]);
   return _fontsReady;
 }
 
-// ─── drawCoverCropped ─────────────────────────────────────────────────────────
-// Object-fit cover with pan (panX/panY in [-1,1]) and zoom (scale ≥ 1)
+// ── Cover crop with pan/zoom ──────────────────────────────────────────────────
 function drawCoverCropped(ctx, img, dx, dy, dw, dh, { panX = 0, panY = 0, scale = 1 } = {}) {
   const imgAR  = img.width / img.height;
   const destAR = dw / dh;
-
-  // Source rect that fits the destination at 1× (cover)
   let srcW, srcH;
-  if (imgAR > destAR) {
-    srcH = img.height / scale;
-    srcW = srcH * destAR;
-  } else {
-    srcW = img.width / scale;
-    srcH = srcW / destAR;
-  }
-
-  // Max pan range (pixels in source image space)
+  if (imgAR > destAR) { srcH = img.height / scale; srcW = srcH * destAR; }
+  else                { srcW = img.width  / scale; srcH = srcW / destAR; }
   const maxPanX = (img.width  - srcW) / 2;
   const maxPanY = (img.height - srcH) / 2;
-
   const srcX = Math.max(0, Math.min(img.width  - srcW, img.width  / 2 - srcW / 2 + panX * maxPanX));
   const srcY = Math.max(0, Math.min(img.height - srcH, img.height / 2 - srcH / 2 + panY * maxPanY));
-
   ctx.drawImage(img, srcX, srcY, srcW, srcH, dx, dy, dw, dh);
 }
 
-// ─── Stamp ────────────────────────────────────────────────────────────────────
-function drawStamp(ctx, x, y, w, h, variant = "default") {
-  const borderColor = variant === "red"   ? "#c04040" : variant === "sepia" ? "#9a7a50" : "#c0b8ae";
-  const bgColor     = variant === "sepia" ? "#fdf6e8" : "#ffffff";
-  const textColor   = variant === "red"   ? "#c04040" : variant === "sepia" ? "#9a7a50" : "#9a9490";
-  const innerBorder = variant === "red"   ? "#e08080" : variant === "sepia" ? "#c8a870" : "#dddddd";
-
-  ctx.save();
-  ctx.fillStyle = bgColor;   ctx.fillRect(x, y, w, h);
-  ctx.strokeStyle = borderColor; ctx.lineWidth = 1.5;
-  ctx.setLineDash([4, 3]);   ctx.strokeRect(x, y, w, h);
-  ctx.setLineDash([]);
-  ctx.strokeStyle = innerBorder; ctx.lineWidth = 0.75;
-  ctx.strokeRect(x + 5, y + 5, w - 10, h - 10);
-
-  ctx.fillStyle = textColor;
-  ctx.font = "bold 8px DM Sans, sans-serif";
-  ctx.textAlign = "center";
-  ctx.fillText("NEW YORK", x + w / 2, y + 19);
-
-  // Skyline
-  const bY = y + h - 26, bX = x + 8;
-  ctx.globalAlpha = 0.5; ctx.fillStyle = textColor;
-  ctx.beginPath();
-  const skyW = w - 16;
-  [[0,0],[0,-13],[4,-13],[4,-20],[8,-20],[8,-16],[13,-16],[13,-24],[15,-27],[17,-24],[17,-16],
-   [22,-16],[22,-20],[26,-20],[26,-12],[31,-12],[31,-18],[37,-18],[37,-12],[43,-12],[43,-19],
-   [49,-19],[49,-16],[skyW,-16],[skyW,0]].forEach(([px, py], i) =>
-    i === 0 ? ctx.moveTo(bX + px, bY + py) : ctx.lineTo(bX + px, bY + py)
-  );
-  ctx.closePath(); ctx.fill();
-  ctx.globalAlpha = 1;
-
-  ctx.fillStyle = textColor;
-  ctx.font = "bold 8px DM Sans, sans-serif";
-  ctx.textAlign = "center";
-  ctx.fillText("FOREVER", x + w / 2, y + h - 9);
-  ctx.restore();
-}
-
-// ─── Postmark ─────────────────────────────────────────────────────────────────
-function drawPostmark(ctx, cx, cy, r, date, variant = "default") {
-  const color = variant === "sepia" ? "rgba(120,80,30,0.55)" : "rgba(175,50,30,0.5)";
-  ctx.save();
-  ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = 1.5;
-  ctx.beginPath(); ctx.arc(cx, cy, r,     0, Math.PI * 2); ctx.stroke();
-  ctx.beginPath(); ctx.arc(cx, cy, r - 7, 0, Math.PI * 2); ctx.stroke();
-  const ds = date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }).toUpperCase();
-  ctx.textAlign = "center";
-  ctx.font = "bold 9px DM Sans, sans-serif"; ctx.fillText(ds,           cx, cy - 6);
-  ctx.font = "8px DM Sans, sans-serif";      ctx.fillText("NEW YORK NY",cx, cy + 5);
-                                             ctx.fillText("10001",       cx, cy + 15);
-  ctx.restore();
-}
-
+// ── Shared helpers ────────────────────────────────────────────────────────────
 function hRule(ctx, x, y, w, color = "#e4dcd4") {
   ctx.save();
   ctx.strokeStyle = color; ctx.lineWidth = 1;
@@ -129,292 +62,295 @@ function hRule(ctx, x, y, w, color = "#e4dcd4") {
   ctx.restore();
 }
 
-// ─── Text helpers ─────────────────────────────────────────────────────────────
+function vRule(ctx, x, y1, y2, color = "#e4dcd4") {
+  ctx.save();
+  ctx.strokeStyle = color; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(x, y1); ctx.lineTo(x, y2); ctx.stroke();
+  ctx.restore();
+}
+
 function getWrappedLines(ctx, text, font, maxWidth) {
   ctx.font = font;
-  const lines = [];
-  let line = "";
+  const lines = []; let line = "";
   for (const word of text.split(" ")) {
     const test = line ? `${line} ${word}` : word;
     if (ctx.measureText(test).width > maxWidth && line) { lines.push(line); line = word; }
-    else { line = test; }
+    else line = test;
   }
   if (line) lines.push(line);
   return lines;
 }
 
-// ─── Info panel (Classic / Flipped / Print right side) ────────────────────────
-// Vertically centers building name + caption in the space between the rule and date.
-function drawInfoPanel(ctx, panelX, panelW, photo, caption, date, variant = "default") {
-  const pad  = 26;
-  const cx   = panelX + panelW / 2;
-  const rX   = panelX + pad;
-  const rW   = panelW - pad * 2;
-  const stW  = 86, stH = 106;
-  const stX  = panelX + panelW - pad - stW;
-  const stY  = 18;
+function drawStamp(ctx, x, y, w, h) {
+  ctx.save();
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(x, y, w, h);
+  ctx.strokeStyle = "#c0b8ae"; ctx.lineWidth = 1.5;
+  ctx.setLineDash([4, 3]); ctx.strokeRect(x, y, w, h);
+  ctx.setLineDash([]);
+  ctx.strokeStyle = "#dddddd"; ctx.lineWidth = 0.75;
+  ctx.strokeRect(x + 5, y + 5, w - 10, h - 10);
 
-  drawStamp(ctx, stX, stY, stW, stH, variant);
-  drawPostmark(ctx, rX + 38, stY + stH / 2, 36, date, variant);
-
-  ctx.font = "bold 9px DM Sans, sans-serif";
-  ctx.fillStyle = variant === "sepia" ? "#b0a080" : "#c8c0b8";
+  ctx.fillStyle = "#9a9490";
+  ctx.font = "600 7px DM Sans, sans-serif";
   ctx.textAlign = "center";
-  ctx.fillText("— POSTCARD —", cx, stY + stH / 2 + 5);
+  ctx.fillText("NEW YORK", x + w / 2, y + 16);
 
-  const ruleY = stY + stH + 16;
-  hRule(ctx, rX, ruleY, rW, variant === "sepia" ? "#c8bca8" : "#e4dcd4");
-
-  // Two-pass: measure content height, then draw centered
-  const building      = getBuildingName(photo.detectedBuilding);
-  const buildingFont  = "bold 26px Syne, sans-serif";
-  const captionFont   = "400 26px Caveat, cursive";
-  const lineH         = 34;
-  const gap           = 16;
-  const maxW          = rW - 8;
-
-  const bLines = building     ? getWrappedLines(ctx, building,         buildingFont, maxW) : [];
-  const cLines = caption.trim() ? getWrappedLines(ctx, caption.trim(), captionFont,  maxW) : [];
-
-  const totalH = bLines.length * lineH
-    + (bLines.length && cLines.length ? gap : 0)
-    + cLines.length * lineH;
-
-  const contentTop    = ruleY + 20;
-  const contentBottom = H - 48;
-  let ty = contentTop + ((contentBottom - contentTop) - totalH) / 2 + lineH;
-
-  if (bLines.length) {
-    ctx.font = buildingFont;
-    ctx.fillStyle = variant === "sepia" ? "#4a3a28" : "#3a3228";
-    ctx.textAlign = "center";
-    for (const l of bLines) { ctx.fillText(l, cx, ty); ty += lineH; }
-    if (cLines.length) ty += gap;
-  }
-
-  if (cLines.length) {
-    ctx.font = captionFont;
-    ctx.fillStyle = variant === "sepia" ? "#6a5a40" : "#5a5048";
-    ctx.textAlign = "center";
-    for (const l of cLines) { ctx.fillText(l, cx, ty); ty += lineH; }
-  }
-
-  ctx.font = "bold 11px DM Sans, sans-serif";
-  ctx.fillStyle = variant === "sepia" ? "#b0a080" : "#c0b4a8";
-  ctx.textAlign = "right";
-  ctx.fillText(
-    date.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }).toUpperCase(),
-    panelX + panelW - pad, H - 18
+  const bY = y + h - 22, bX = x + 8;
+  ctx.globalAlpha = 0.5; ctx.fillStyle = "#9a9490";
+  ctx.beginPath();
+  const skyW = w - 16;
+  [[0,0],[0,-11],[3,-11],[3,-17],[7,-17],[7,-13],[11,-13],[11,-20],[13,-23],[15,-20],[15,-13],
+   [19,-13],[19,-17],[22,-17],[22,-10],[26,-10],[26,-15],[31,-15],[31,-10],[36,-10],[36,-16],
+   [41,-16],[41,-13],[skyW,-13],[skyW,0]].forEach(([px, py], i) =>
+    i === 0 ? ctx.moveTo(bX + px, bY + py) : ctx.lineTo(bX + px, bY + py)
   );
+  ctx.closePath(); ctx.fill();
+  ctx.globalAlpha = 1;
+
+  ctx.fillStyle = "#9a9490";
+  ctx.font = "600 7px DM Sans, sans-serif";
+  ctx.textAlign = "center";
+  ctx.fillText("FOREVER", x + w / 2, y + h - 7);
+  ctx.restore();
 }
 
-// ─── Template A: Classic ─────────────────────────────────────────────────────
-function drawClassic(ctx, img, photo, caption, transform) {
-  const splitX = 700;
-  drawCoverCropped(ctx, img, 0, 0, splitX, H, transform);
-
-  const tag = getBuildingName(photo.detectedBuilding);
-  if (tag) {
-    const g = ctx.createLinearGradient(0, H - 80, 0, H);
-    g.addColorStop(0, "rgba(0,0,0,0)"); g.addColorStop(1, "rgba(0,0,0,0.44)");
-    ctx.fillStyle = g; ctx.fillRect(0, H - 80, splitX, 80);
-    ctx.font = "400 20px Caveat, cursive";
-    ctx.fillStyle = "rgba(255,255,255,0.9)";
-    ctx.textAlign = "left";
-    ctx.shadowColor = "rgba(0,0,0,0.3)"; ctx.shadowBlur = 4;
-    ctx.fillText(tag, 20, H - 18);
-    ctx.shadowBlur = 0;
-  }
-
-  ctx.strokeStyle = "#d8d0c8"; ctx.lineWidth = 1;
-  ctx.beginPath(); ctx.moveTo(splitX, 0); ctx.lineTo(splitX, H); ctx.stroke();
-  ctx.fillStyle = "#fdf9f4";
-  ctx.fillRect(splitX, 0, W - splitX, H);
-
-  drawInfoPanel(ctx, splitX, W - splitX, photo, caption, photo.capturedAt, "default");
+function drawPostmark(ctx, cx, cy, r, date) {
+  const color = "rgba(175,50,30,0.5)";
+  ctx.save();
+  ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.arc(cx, cy, r,     0, Math.PI * 2); ctx.stroke();
+  ctx.beginPath(); ctx.arc(cx, cy, r - 6, 0, Math.PI * 2); ctx.stroke();
+  const ds = date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }).toUpperCase();
+  ctx.textAlign = "center";
+  ctx.font = "600 8px DM Sans, sans-serif"; ctx.fillText(ds,            cx, cy - 5);
+  ctx.font = "500 7px DM Sans, sans-serif"; ctx.fillText("NEW YORK NY", cx, cy + 5);
+                                            ctx.fillText("10001",        cx, cy + 14);
+  ctx.restore();
 }
 
-// ─── Template B: Panoramic ────────────────────────────────────────────────────
-function drawPanoramic(ctx, img, photo, caption, transform) {
-  const photoH = 476, splitX = 720, pad = 22;
+// ── Shared back-panel renderer (used by all 3 templates) ─────────────────────
+// Draws: postcard label + postmark + stamp row, rule, building name + date left,
+// vertical divider, right column. panelX/panelW define the full panel bounds.
+function drawBackPanel(ctx, panelX, panelW, building, date, bgColor = "#fdf9f3") {
+  ctx.fillStyle = bgColor;
+  ctx.fillRect(panelX, 0, panelW, H);
 
-  drawCoverCropped(ctx, img, 0, 0, W, photoH, transform);
-
-  const tag = getBuildingName(photo.detectedBuilding);
-  if (tag) {
-    ctx.font = "400 20px Caveat, cursive";
-    ctx.fillStyle = "rgba(255,255,255,0.88)";
-    ctx.textAlign = "left";
-    ctx.shadowColor = "rgba(0,0,0,0.4)"; ctx.shadowBlur = 5;
-    ctx.fillText(tag, 20, photoH - 14);
-    ctx.shadowBlur = 0;
-  }
-
-  ctx.strokeStyle = "#d8d0c8"; ctx.lineWidth = 1;
-  ctx.beginPath(); ctx.moveTo(0, photoH); ctx.lineTo(W, photoH); ctx.stroke();
-  ctx.fillStyle = "#fdf9f4"; ctx.fillRect(0, photoH, W, H - photoH);
-
-  // Bottom-left: ruled message lines
-  const msgX = pad, msgW = splitX - pad * 2;
-  const lineCount = 4;
-  const usableH   = H - photoH - pad * 2;
-  const lineStep  = Math.floor(usableH / (lineCount + 0.5));
-  const firstLineY = photoH + pad + lineStep;
-
-  ctx.font = "bold 8px DM Sans, sans-serif";
-  ctx.fillStyle = "#c8c0b8"; ctx.textAlign = "left";
-  ctx.fillText("MESSAGE", msgX, photoH + pad + 12);
-
-  const wrappedLines = [];
-  let cur = "";
-  ctx.font = "400 24px Caveat, cursive";
-  for (const word of caption.trim().split(" ").filter(Boolean)) {
-    const test = cur ? `${cur} ${word}` : word;
-    if (ctx.measureText(test).width > msgW && cur) { wrappedLines.push(cur); cur = word; }
-    else { cur = test; }
-  }
-  if (cur) wrappedLines.push(cur);
-
-  for (let i = 0; i < lineCount; i++) {
-    const ly = firstLineY + i * lineStep;
-    hRule(ctx, msgX, ly, msgW, "#e0d8d0");
-    if (wrappedLines[i]) {
-      ctx.font = "400 24px Caveat, cursive";
-      ctx.fillStyle = "#3a2e22"; ctx.textAlign = "left";
-      ctx.fillText(wrappedLines[i], msgX, ly);
-    }
-  }
-
-  ctx.strokeStyle = "#d8d0c8"; ctx.lineWidth = 1;
-  ctx.beginPath(); ctx.moveTo(splitX, photoH); ctx.lineTo(splitX, H); ctx.stroke();
-
-  // Bottom-right: stamp + info
-  const adX = splitX + pad, adW = W - splitX - pad * 2;
-  const stW = 72, stH = 88, stX = W - pad - stW, stY = photoH + 14;
+  const pad  = 24;
+  const stW  = 64, stH = 80;
+  const stX  = panelX + panelW - pad - stW;
+  const stY  = 20;
+  const pmCX = panelX + pad + 34;
+  const pmCY = stY + stH / 2;
 
   drawStamp(ctx, stX, stY, stW, stH);
-  drawPostmark(ctx, adX + 32, stY + stH / 2, 30, photo.capturedAt);
+  drawPostmark(ctx, pmCX, pmCY, 28, date);
 
-  ctx.font = "bold 9px DM Sans, sans-serif";
-  ctx.fillStyle = "#c8c0b8"; ctx.textAlign = "center";
-  ctx.fillText("— POSTCARD —", splitX + (W - splitX) / 2, stY + stH / 2 + 5);
-
-  hRule(ctx, adX, stY + stH + 12, adW);
-
-  const building = getBuildingName(photo.detectedBuilding);
-  let infoY = stY + stH + 36;
-  if (building) {
-    ctx.font = "bold 18px Syne, sans-serif";
-    ctx.fillStyle = "#3a3228"; ctx.textAlign = "left";
-    const bLines = getWrappedLines(ctx, building, "bold 18px Syne, sans-serif", adW);
-    for (const l of bLines) { ctx.fillText(l, adX, infoY); infoY += 24; }
-    infoY += 6;
-  }
-
-  ctx.font = "bold 9px DM Sans, sans-serif";
-  ctx.fillStyle = "#c0b4a8"; ctx.textAlign = "right";
-  ctx.fillText(
-    photo.capturedAt.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }).toUpperCase(),
-    W - pad, H - 12
-  );
-}
-
-// ─── Template C: Print ────────────────────────────────────────────────────────
-function drawPrint(ctx, img, photo, caption, transform) {
-  const outerPad = 20, splitX = 820, captionH = 50;
-
-  ctx.fillStyle = "#f4ede0"; ctx.fillRect(0, 0, W, H);
-
-  const pX = outerPad, pY = outerPad;
-  const pW = splitX - outerPad;
-  const pH = H - outerPad * 2 - captionH;
-  drawCoverCropped(ctx, img, pX, pY, pW, pH, transform);
-
-  ctx.strokeStyle = "#c8bca8"; ctx.lineWidth = 1;
-  ctx.beginPath(); ctx.moveTo(splitX, outerPad); ctx.lineTo(splitX, H - outerPad); ctx.stroke();
-
-  // Caption + building name centered in right info panel
-  drawInfoPanel(ctx, splitX, W - splitX - outerPad, photo, caption, photo.capturedAt, "sepia");
-
-  // Bottom rule under photo
-  hRule(ctx, pX, pY + pH + 10, pW, "#c8bca8");
-}
-
-// ─── Template D: Flipped ──────────────────────────────────────────────────────
-function drawFlipped(ctx, img, photo, caption, transform) {
-  const splitX = 460, pad = 26;
-
-  ctx.fillStyle = "#fdf9f4"; ctx.fillRect(0, 0, splitX, H);
-
-  const stW = 82, stH = 100;
-  const stX = splitX - pad - stW, stY = 20;
-  drawStamp(ctx, stX, stY, stW, stH);
-  drawPostmark(ctx, pad + 38, stY + stH / 2, 34, photo.capturedAt);
-
-  ctx.font = "bold 8px DM Sans, sans-serif";
-  ctx.fillStyle = "#c8c0b8"; ctx.textAlign = "center";
-  ctx.fillText("— POSTCARD —", splitX / 2, stY + stH / 2 + 4);
+  ctx.font = "600 8px DM Sans, sans-serif";
+  ctx.fillStyle = "#c0b4a8";
+  ctx.textAlign = "center";
+  ctx.fillText("— POSTCARD —", panelX + panelW / 2, pmCY + 4);
 
   const ruleY = stY + stH + 14;
-  hRule(ctx, pad, ruleY, splitX - pad * 2);
+  hRule(ctx, panelX + pad, ruleY, panelW - pad * 2);
 
-  // Two-pass centering for flipped panel
-  const building     = getBuildingName(photo.detectedBuilding);
-  const buildingFont = "bold 24px Syne, sans-serif";
-  const captionFont  = "400 22px Caveat, cursive";
-  const lineH = 30, gap = 14, maxW = splitX - pad * 2;
+  // Left column: building + date
+  const colPad = panelX + pad;
+  const divX   = panelX + panelW * 0.52;
+  const colW   = divX - colPad - 12;
 
-  const bLines = building       ? getWrappedLines(ctx, building,        buildingFont, maxW) : [];
-  const cLines = caption.trim() ? getWrappedLines(ctx, caption.trim(),  captionFont,  maxW) : [];
-
-  const totalH = bLines.length * lineH + (bLines.length && cLines.length ? gap : 0) + cLines.length * lineH;
-  const contentTop    = ruleY + 20;
-  const contentBottom = H - 48;
-  let ty = contentTop + ((contentBottom - contentTop) - totalH) / 2 + lineH;
-
-  if (bLines.length) {
-    ctx.font = buildingFont; ctx.fillStyle = "#3a3228"; ctx.textAlign = "center";
-    for (const l of bLines) { ctx.fillText(l, splitX / 2, ty); ty += lineH; }
-    if (cLines.length) ty += gap;
-  }
-  if (cLines.length) {
-    ctx.font = captionFont; ctx.fillStyle = "#5a5048"; ctx.textAlign = "center";
-    for (const l of cLines) { ctx.fillText(l, splitX / 2, ty); ty += lineH; }
+  let ty = ruleY + 44;
+  if (building) {
+    const bFont = "800 20px Syne, sans-serif";
+    const bLines = getWrappedLines(ctx, building, bFont, colW);
+    ctx.font = bFont; ctx.fillStyle = "#2a2420"; ctx.textAlign = "left";
+    for (const l of bLines) { ctx.fillText(l, colPad, ty); ty += 28; }
+    ty += 8;
   }
 
-  ctx.font = "bold 9px DM Sans, sans-serif";
-  ctx.fillStyle = "#c0b4a8"; ctx.textAlign = "center";
+  ctx.font = "500 11px DM Sans, sans-serif";
+  ctx.fillStyle = "#b0a090"; ctx.textAlign = "left";
+  ctx.fillText("New York City", colPad, ty);
   ctx.fillText(
-    photo.capturedAt.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }).toUpperCase(),
-    splitX / 2, H - 18
+    date.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }).toUpperCase(),
+    colPad, ty + 18
   );
 
-  ctx.strokeStyle = "#d8d0c8"; ctx.lineWidth = 1;
-  ctx.beginPath(); ctx.moveTo(splitX, 0); ctx.lineTo(splitX, H); ctx.stroke();
+  vRule(ctx, divX, ruleY + 14, H - 20);
 
-  drawCoverCropped(ctx, img, splitX, 0, W - splitX, H, transform);
+  ctx.font = "600 9px DM Sans, sans-serif";
+  ctx.fillStyle = "#c8bca8"; ctx.textAlign = "center";
+  ctx.fillText("NEW YORK, NY 10001", divX + (panelX + panelW - divX) / 2, H - 22);
 }
 
-const DRAW_FNS = { classic: drawClassic, panoramic: drawPanoramic, print: drawPrint, flipped: drawFlipped };
+// ── Template A: Classic Split ─────────────────────────────────────────────────
+// Photo left 58% | postcard back right 42%
+function drawSplit(ctx, img, building, date, transform) {
+  const splitX = 696;
+  drawCoverCropped(ctx, img, 0, 0, splitX, H, transform);
 
-// ─── Component ────────────────────────────────────────────────────────────────
+  // Subtle building label on photo
+  if (building) {
+    const g = ctx.createLinearGradient(0, H - 90, 0, H);
+    g.addColorStop(0, "rgba(0,0,0,0)"); g.addColorStop(1, "rgba(0,0,0,0.45)");
+    ctx.fillStyle = g; ctx.fillRect(0, H - 90, splitX, 90);
+    ctx.font = "400 18px Caveat, cursive";
+    ctx.fillStyle = "rgba(255,255,255,0.85)";
+    ctx.textAlign = "left";
+    ctx.shadowColor = "rgba(0,0,0,0.3)"; ctx.shadowBlur = 4;
+    ctx.fillText(building, 18, H - 16);
+    ctx.shadowBlur = 0;
+  }
 
+  ctx.strokeStyle = "#e0d8cc"; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(splitX, 0); ctx.lineTo(splitX, H); ctx.stroke();
+
+  drawBackPanel(ctx, splitX, W - splitX, building, date, "#fdf9f3");
+}
+
+// ── Template B: Strip ─────────────────────────────────────────────────────────
+// Full-width photo top | postcard back bottom strip
+function drawStrip(ctx, img, building, date, transform) {
+  const photoH = 520;
+  drawCoverCropped(ctx, img, 0, 0, W, photoH, transform);
+
+  if (building) {
+    const g = ctx.createLinearGradient(0, photoH - 90, 0, photoH);
+    g.addColorStop(0, "rgba(0,0,0,0)"); g.addColorStop(1, "rgba(0,0,0,0.45)");
+    ctx.fillStyle = g; ctx.fillRect(0, photoH - 90, W, 90);
+    ctx.font = "400 18px Caveat, cursive";
+    ctx.fillStyle = "rgba(255,255,255,0.85)";
+    ctx.textAlign = "left";
+    ctx.shadowColor = "rgba(0,0,0,0.3)"; ctx.shadowBlur = 4;
+    ctx.fillText(building, 20, photoH - 14);
+    ctx.shadowBlur = 0;
+  }
+
+  ctx.strokeStyle = "#e0d8cc"; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(0, photoH); ctx.lineTo(W, photoH); ctx.stroke();
+
+  // Back strip — draw manually to fit the shorter height
+  const pad  = 24;
+  const stW  = 64, stH = 72;
+  const stX  = W - pad - stW;
+  const stY  = photoH + 14;
+  const pmCX = pad + 34;
+  const pmCY = stY + stH / 2;
+
+  ctx.fillStyle = "#fdf9f3"; ctx.fillRect(0, photoH, W, H - photoH);
+
+  drawStamp(ctx, stX, stY, stW, stH);
+  drawPostmark(ctx, pmCX, pmCY, 26, date);
+
+  ctx.font = "600 8px DM Sans, sans-serif";
+  ctx.fillStyle = "#c0b4a8"; ctx.textAlign = "center";
+  ctx.fillText("— POSTCARD —", W / 2, pmCY + 4);
+
+  hRule(ctx, pad, stY + stH + 10, W - pad * 2);
+
+  const divX = W * 0.52;
+  const colPad = pad;
+  const colW = divX - colPad - 12;
+  let ty = stY + stH + 38;
+
+  if (building) {
+    const bFont = "800 18px Syne, sans-serif";
+    const bLines = getWrappedLines(ctx, building, bFont, colW);
+    ctx.font = bFont; ctx.fillStyle = "#2a2420"; ctx.textAlign = "left";
+    for (const l of bLines) { ctx.fillText(l, colPad, ty); ty += 25; }
+    ty += 6;
+  }
+
+  ctx.font = "500 10px DM Sans, sans-serif";
+  ctx.fillStyle = "#b0a090"; ctx.textAlign = "left";
+  ctx.fillText("New York City  ·  " +
+    date.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }).toUpperCase(),
+    colPad, ty
+  );
+
+  vRule(ctx, divX, stY + stH + 10, H - 12);
+
+  ctx.font = "600 9px DM Sans, sans-serif";
+  ctx.fillStyle = "#c8bca8"; ctx.textAlign = "center";
+  ctx.fillText("NEW YORK, NY 10001", divX + (W - divX) / 2, H - 18);
+}
+
+// ── Template C: Border ────────────────────────────────────────────────────────
+// White frame wrapper | photo with padding | postcard back strip inside frame
+function drawBorder(ctx, img, building, date, transform) {
+  const framePad = 24;
+  const backH    = 160;
+  const photoX   = framePad;
+  const photoY   = framePad;
+  const photoW   = W - framePad * 2;
+  const photoH   = H - framePad - backH;
+
+  ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, W, H);
+  drawCoverCropped(ctx, img, photoX, photoY, photoW, photoH, transform);
+
+  // Thin rule separating photo from back
+  hRule(ctx, framePad, photoY + photoH + 1, photoW, "#e8e0d8");
+
+  // Back area inside the white frame
+  const pad   = 20;
+  const stW   = 60, stH = 66;
+  const stX   = W - framePad - pad - stW;
+  const stY   = photoY + photoH + 18;
+  const pmCX  = framePad + pad + 30;
+  const pmCY  = stY + stH / 2;
+
+  drawStamp(ctx, stX, stY, stW, stH);
+  drawPostmark(ctx, pmCX, pmCY, 24, date);
+
+  ctx.font = "600 8px DM Sans, sans-serif";
+  ctx.fillStyle = "#c0b4a8"; ctx.textAlign = "center";
+  ctx.fillText("— POSTCARD —", W / 2, pmCY + 4);
+
+  const divX   = W * 0.52;
+  const colPad = framePad + pad;
+  const colW   = divX - colPad - 12;
+  let ty = stY + 28;
+
+  if (building) {
+    const bFont = "800 17px Syne, sans-serif";
+    const bLines = getWrappedLines(ctx, building, bFont, colW);
+    ctx.font = bFont; ctx.fillStyle = "#1a1a1a"; ctx.textAlign = "left";
+    for (const l of bLines) { ctx.fillText(l, colPad, ty); ty += 24; }
+    ty += 4;
+  }
+
+  ctx.font = "500 10px DM Sans, sans-serif";
+  ctx.fillStyle = "#b0a090"; ctx.textAlign = "left";
+  ctx.fillText(
+    "New York City  ·  " +
+    date.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }).toUpperCase(),
+    colPad, ty
+  );
+
+  vRule(ctx, divX, photoY + photoH + 14, H - framePad + 4, "#e8e0d8");
+
+  ctx.font = "600 9px DM Sans, sans-serif";
+  ctx.fillStyle = "#c8bca8"; ctx.textAlign = "center";
+  ctx.fillText("NEW YORK, NY 10001", divX + (W - framePad - divX) / 2, stY + stH / 2 + 4);
+}
+
+const DRAW_FNS = { split: drawSplit, strip: drawStrip, border: drawBorder };
+
+// ── Component ─────────────────────────────────────────────────────────────────
 export default function PostcardEditor({ photo, onClose, onSaveToLibrary }) {
-  const [activeTemplate,   setActiveTemplate]   = useState("classic");
-  const [caption,          setCaption]          = useState("");
+  const [activeTemplate,   setActiveTemplate]   = useState("split");
   const [selectedBuilding, setSelectedBuilding] = useState(photo.detectedBuilding ?? null);
+  const [showBuildingPicker, setShowBuildingPicker] = useState(false);
   const [photoTransform,   setPhotoTransform]   = useState({ panX: 0, panY: 0, scale: 1 });
-  const [cropMode,       setCropMode]       = useState(false);
-  const [previewUrl,     setPreviewUrl]     = useState(null);
-  const [saving,         setSaving]         = useState(false);
-  const [rendering,      setRendering]      = useState(false);
-  const [libSaved,       setLibSaved]       = useState(false);
+  const [cropMode,         setCropMode]         = useState(false);
+  const [previewUrl,       setPreviewUrl]       = useState(null);
+  const [saving,           setSaving]           = useState(false);
+  const [libSaved,         setLibSaved]         = useState(false);
 
   const canvasRef   = useRef(null);
   const renderTimer = useRef(null);
   const dragRef     = useRef(null);
 
-  // Reset crop when switching templates
   useEffect(() => {
     setPhotoTransform({ panX: 0, panY: 0, scale: 1 });
     setCropMode(false);
@@ -430,60 +366,47 @@ export default function PostcardEditor({ photo, onClose, onSaveToLibrary }) {
     const img = new Image();
     img.src = photo.url;
     await new Promise((res) => { img.onload = res; img.onerror = res; });
-    const photoWithBuilding = { ...photo, detectedBuilding: selectedBuilding };
-    DRAW_FNS[activeTemplate](ctx, img, photoWithBuilding, caption, photoTransform);
+    const building = getBuildingName(selectedBuilding);
+    DRAW_FNS[activeTemplate](ctx, img, building, photo.capturedAt, photoTransform);
     return canvas;
-  }, [photo, activeTemplate, caption, photoTransform, selectedBuilding]);
+  }, [photo, activeTemplate, selectedBuilding, photoTransform]);
 
-  // Debounced re-render — longer window while typing avoids rapid redraws
   useEffect(() => {
     let cancelled = false;
-    setRendering(true);
     clearTimeout(renderTimer.current);
     renderTimer.current = setTimeout(() => {
       render().then((canvas) => {
         if (!cancelled && canvas) setPreviewUrl(canvas.toDataURL("image/png"));
-        if (!cancelled) setRendering(false);
       });
-    }, 220);
+    }, 180);
     return () => { cancelled = true; clearTimeout(renderTimer.current); };
   }, [render]);
 
-  // ── Crop interaction ────────────────────────────────────────────────────────
+  // ── Crop ──────────────────────────────────────────────────────────────────
   const handlePointerDown = (e) => {
     e.currentTarget.setPointerCapture(e.pointerId);
     dragRef.current = {
-      startX:    e.clientX,
-      startY:    e.clientY,
-      startPanX: photoTransform.panX,
-      startPanY: photoTransform.panY,
-      w: e.currentTarget.offsetWidth,
-      h: e.currentTarget.offsetHeight,
+      startX: e.clientX, startY: e.clientY,
+      startPanX: photoTransform.panX, startPanY: photoTransform.panY,
+      w: e.currentTarget.offsetWidth, h: e.currentTarget.offsetHeight,
     };
   };
-
   const handlePointerMove = (e) => {
     if (!dragRef.current) return;
     const { startX, startY, startPanX, startPanY, w, h } = dragRef.current;
-    // Dragging the full width/height = full pan range (±1), modulated by zoom
-    const dPanX = -(e.clientX - startX) / (w * 0.5) * photoTransform.scale;
-    const dPanY = -(e.clientY - startY) / (h * 0.5) * photoTransform.scale;
     setPhotoTransform(prev => ({
       ...prev,
-      panX: Math.max(-1, Math.min(1, startPanX + dPanX)),
-      panY: Math.max(-1, Math.min(1, startPanY + dPanY)),
+      panX: Math.max(-1, Math.min(1, startPanX - (e.clientX - startX) / (w * 0.5) * prev.scale)),
+      panY: Math.max(-1, Math.min(1, startPanY - (e.clientY - startY) / (h * 0.5) * prev.scale)),
     }));
   };
-
-  const handlePointerUp = () => { dragRef.current = null; };
-
-  const handleWheel = (e) => {
+  const handlePointerUp   = () => { dragRef.current = null; };
+  const handleWheel       = (e) => {
     e.preventDefault();
-    const delta = e.deltaY > 0 ? -0.12 : 0.12;
-    setPhotoTransform(prev => ({ ...prev, scale: Math.max(1, Math.min(4, prev.scale + delta)) }));
+    setPhotoTransform(prev => ({ ...prev, scale: Math.max(1, Math.min(4, prev.scale + (e.deltaY > 0 ? -0.12 : 0.12))) }));
   };
 
-  // ── Save handlers ───────────────────────────────────────────────────────────
+  // ── Save ──────────────────────────────────────────────────────────────────
   const renderBlob = async () => {
     const canvas = await render();
     if (!canvas) return null;
@@ -519,6 +442,7 @@ export default function PostcardEditor({ photo, onClose, onSaveToLibrary }) {
   };
 
   const scaleLabel = photoTransform.scale === 1 ? "1×" : `${photoTransform.scale.toFixed(1)}×`;
+  const buildingLabel = getBuildingName(selectedBuilding);
 
   return (
     <div className="absolute inset-0 z-30 flex flex-col bg-black/95 text-white backdrop-blur-sm">
@@ -537,7 +461,7 @@ export default function PostcardEditor({ photo, onClose, onSaveToLibrary }) {
           {onSaveToLibrary && (
             <button
               type="button" onClick={handleSaveToLibrary}
-              disabled={saving || !previewUrl || rendering}
+              disabled={saving || !previewUrl}
               className="rounded-full border px-4 py-2 text-sm font-semibold transition active:scale-95 disabled:opacity-40"
               style={{
                 borderColor: libSaved ? "rgba(100,210,100,0.6)" : "rgba(255,255,255,0.25)",
@@ -547,13 +471,13 @@ export default function PostcardEditor({ photo, onClose, onSaveToLibrary }) {
           )}
           <button
             type="button" onClick={handleSave}
-            disabled={saving || !previewUrl || rendering}
+            disabled={saving || !previewUrl}
             className="rounded-full bg-white px-5 py-2 text-sm font-semibold text-black transition active:scale-95 disabled:opacity-40"
           >{saving ? "…" : "Save"}</button>
         </div>
       </div>
 
-      {/* Preview — no opacity flicker; crop overlay when active */}
+      {/* Preview */}
       <div className="relative flex min-h-0 flex-1 items-center justify-center p-4">
         {previewUrl ? (
           <img
@@ -564,7 +488,6 @@ export default function PostcardEditor({ photo, onClose, onSaveToLibrary }) {
           <div className="h-48 w-full animate-pulse rounded-lg" style={{ backgroundColor: "rgba(255,255,255,0.06)" }} />
         )}
 
-        {/* Transparent drag layer for crop */}
         {cropMode && (
           <div
             className="absolute inset-4 rounded-lg"
@@ -577,116 +500,88 @@ export default function PostcardEditor({ photo, onClose, onSaveToLibrary }) {
           />
         )}
 
-        {/* Crop mode badge */}
         {cropMode && (
           <div
             className="pointer-events-none absolute bottom-6 left-1/2 -translate-x-1/2 rounded-full px-3 py-1 text-xs font-semibold"
             style={{ background: "rgba(0,0,0,0.55)", color: "rgba(255,255,255,0.7)", backdropFilter: "blur(8px)" }}
-          >
-            drag to pan · scroll to zoom · {scaleLabel}
-          </div>
+          >drag to pan · scroll to zoom · {scaleLabel}</div>
         )}
 
         <canvas ref={canvasRef} className="hidden" />
       </div>
 
-      {/* Controls — crop toolbar or caption + templates */}
+      {/* Controls */}
       {cropMode ? (
         <div className="space-y-3 px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] sm:pb-5">
-          {/* Zoom row */}
           <div className="flex items-center gap-3">
-            <span className="text-[10px] font-semibold uppercase tracking-[0.25em]" style={{ color: "rgba(255,255,255,0.4)" }}>
-              Zoom
-            </span>
-            <button
-              type="button"
-              onClick={() => setPhotoTransform(p => ({ ...p, scale: Math.max(1, p.scale - 0.25) }))}
-              className="flex h-9 w-9 items-center justify-center rounded-full border border-white/20 text-white/70 text-lg leading-none active:scale-95"
-            >−</button>
+            <span className="text-[10px] font-semibold uppercase tracking-[0.25em]" style={{ color: "rgba(255,255,255,0.4)" }}>Zoom</span>
+            <button type="button" onClick={() => setPhotoTransform(p => ({ ...p, scale: Math.max(1, p.scale - 0.25) }))}
+              className="flex h-9 w-9 items-center justify-center rounded-full border border-white/20 text-white/70 text-lg leading-none active:scale-95">−</button>
             <span className="min-w-[3rem] text-center text-sm font-semibold text-white/80">{scaleLabel}</span>
-            <button
-              type="button"
-              onClick={() => setPhotoTransform(p => ({ ...p, scale: Math.min(4, p.scale + 0.25) }))}
-              className="flex h-9 w-9 items-center justify-center rounded-full border border-white/20 text-white/70 text-lg leading-none active:scale-95"
-            >+</button>
-            <button
-              type="button"
-              onClick={() => setPhotoTransform({ panX: 0, panY: 0, scale: 1 })}
-              className="ml-auto text-xs text-white/40 active:text-white/70"
-            >Reset</button>
+            <button type="button" onClick={() => setPhotoTransform(p => ({ ...p, scale: Math.min(4, p.scale + 0.25) }))}
+              className="flex h-9 w-9 items-center justify-center rounded-full border border-white/20 text-white/70 text-lg leading-none active:scale-95">+</button>
+            <button type="button" onClick={() => setPhotoTransform({ panX: 0, panY: 0, scale: 1 })}
+              className="ml-auto text-xs text-white/40 active:text-white/70">Reset</button>
           </div>
-          <button
-            type="button"
-            onClick={() => setCropMode(false)}
+          <button type="button" onClick={() => setCropMode(false)}
             className="w-full rounded-xl py-2.5 text-sm font-semibold transition active:scale-95"
-            style={{ background: "rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.85)" }}
-          >Done Cropping</button>
+            style={{ background: "rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.85)" }}>Done Cropping</button>
         </div>
       ) : (
         <>
-          {/* Caption + crop toggle */}
-          <div className="px-4 pb-3">
-            <div className="flex items-end gap-2">
-              <div className="flex-1">
-                <label className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.25em]" style={{ color: "rgba(255,255,255,0.4)" }}>
-                  Caption
-                </label>
-                <input
-                  type="text"
-                  value={caption}
-                  onChange={(e) => setCaption(e.target.value)}
-                  placeholder="Write something…"
-                  maxLength={120}
-                  className="w-full rounded-xl border px-4 py-2.5 text-sm outline-none transition"
-                  style={{ backgroundColor: "rgba(255,255,255,0.1)", borderColor: "rgba(255,255,255,0.15)", color: "#ffffff" }}
-                />
-              </div>
+          {/* Building + crop row */}
+          <div className="flex items-center justify-between px-4 pb-3">
+            <div className="flex flex-col gap-0.5">
+              <span className="text-[10px] font-semibold uppercase tracking-[0.25em]" style={{ color: "rgba(255,255,255,0.35)" }}>Building</span>
+              <span className="text-sm font-semibold text-white/80">{buildingLabel ?? "None detected"}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setShowBuildingPicker(p => !p)}
+                className="rounded-full border px-3 py-1.5 text-xs font-semibold transition active:scale-95"
+                style={{ borderColor: "rgba(255,255,255,0.18)", color: "rgba(255,255,255,0.55)", backgroundColor: "rgba(255,255,255,0.07)" }}
+              >Wrong building?</button>
               <button
                 type="button"
                 onClick={() => setCropMode(true)}
-                className="mb-0.5 flex-shrink-0 rounded-xl border px-3 py-2.5 text-sm font-semibold transition active:scale-95"
-                style={{ borderColor: "rgba(255,255,255,0.2)", color: "rgba(255,255,255,0.7)", backgroundColor: "rgba(255,255,255,0.08)" }}
+                className="rounded-full border px-3 py-1.5 text-xs font-semibold transition active:scale-95"
+                style={{ borderColor: "rgba(255,255,255,0.18)", color: "rgba(255,255,255,0.55)", backgroundColor: "rgba(255,255,255,0.07)" }}
               >Crop</button>
             </div>
           </div>
 
-          {/* Building picker */}
-          <div className="px-4 pb-3">
-            <div className="mb-1 text-[10px] font-semibold uppercase tracking-[0.25em]" style={{ color: "rgba(255,255,255,0.4)" }}>
-              Building
-            </div>
-            <div className="flex flex-wrap gap-2">
+          {/* Building picker (expandable) */}
+          {showBuildingPicker && (
+            <div className="flex flex-wrap gap-2 px-4 pb-3">
               <button
                 type="button"
-                onClick={() => setSelectedBuilding(null)}
+                onClick={() => { setSelectedBuilding(null); setShowBuildingPicker(false); }}
                 className="rounded-full border px-3 py-1 text-xs font-semibold transition active:scale-95"
                 style={{
                   borderColor: selectedBuilding === null ? "rgba(255,255,255,0.7)" : "rgba(255,255,255,0.15)",
-                  color:       selectedBuilding === null ? "#ffffff"                : "rgba(255,255,255,0.5)",
+                  color:       selectedBuilding === null ? "#fff"                   : "rgba(255,255,255,0.5)",
                   backgroundColor: selectedBuilding === null ? "rgba(255,255,255,0.15)" : "transparent",
                 }}
               >None</button>
               {BUILDING_KEYS.map((key) => (
-                <button
-                  key={key} type="button"
-                  onClick={() => setSelectedBuilding(key)}
+                <button key={key} type="button"
+                  onClick={() => { setSelectedBuilding(key); setShowBuildingPicker(false); }}
                   className="rounded-full border px-3 py-1 text-xs font-semibold transition active:scale-95"
                   style={{
                     borderColor: selectedBuilding === key ? "rgba(255,255,255,0.7)" : "rgba(255,255,255,0.15)",
-                    color:       selectedBuilding === key ? "#ffffff"                : "rgba(255,255,255,0.5)",
+                    color:       selectedBuilding === key ? "#fff"                   : "rgba(255,255,255,0.5)",
                     backgroundColor: selectedBuilding === key ? "rgba(255,255,255,0.15)" : "transparent",
                   }}
                 >{BUILDING_DISPLAY[key]}</button>
               ))}
             </div>
-          </div>
+          )}
 
           {/* Template picker */}
           <div className="flex gap-3 overflow-x-auto px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] sm:pb-5">
             {TEMPLATES.map((t) => (
-              <button
-                key={t.id} type="button"
-                onClick={() => setActiveTemplate(t.id)}
+              <button key={t.id} type="button" onClick={() => setActiveTemplate(t.id)}
                 className={`flex flex-shrink-0 flex-col items-center gap-1.5 rounded-xl border p-1 transition active:scale-95 ${
                   activeTemplate === t.id ? "border-white/60 ring-2 ring-white/40" : "border-white/10 opacity-60 hover:opacity-90"
                 }`}
