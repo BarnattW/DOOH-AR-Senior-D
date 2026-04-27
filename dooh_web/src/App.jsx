@@ -4,11 +4,14 @@ import { useDetectorMode } from "./hooks/useDetectorMode";
 import { useGeolocation } from "./hooks/useGeolocation";
 import { useDetectionLoop } from "./hooks/useDetectionLoop";
 import { usePixiOverlay } from "./hooks/usePixiOverlay";
+import { usePhotoLibrary } from "./hooks/usePhotoLibrary";
 import { isNearLandmark } from "./util/geolocation";
 import { FILTERS, DEFAULT_FILTER_ID } from "./filters";
 import LocationStatus from "./components/LocationStatus";
 import CameraControls from "./components/CameraControls";
 import FilterPicker from "./components/FilterPicker";
+import PhotoLibrary from "./components/PhotoLibrary";
+import StartPanel from "./components/StartPanel";
 
 const EMPIRE_STATE = { lat: 40.748817, lng: -73.985428 };
 const RADIUS_M = 5000;
@@ -65,8 +68,20 @@ export default function App() {
     },
   });
 
+  const {
+    photos,
+    latestPhoto,
+    isLibraryOpen,
+    capturePhoto,
+    openLibrary,
+    closeLibrary,
+  } = usePhotoLibrary({
+    canvasContainerRef: pixiCanvasRef,
+    zoom,
+    zoomCaps,
+  });
+
   const canStart = !isRunning;
-  const detectionReady = !!session && !geoLoading && !geoError && !!near?.ok;
 
   const handleStart = async () => {
     await startWebcam();
@@ -104,66 +119,59 @@ export default function App() {
                   {isRunning ? "Live camera" : "Ready to start"}
                 </div>
               </div>
-              <div className="pointer-events-auto max-w-[min(100%,19rem)] rounded-2xl border border-white/10 bg-black/35 p-3 backdrop-blur-md">
-                <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-white/85">
-                  <div className="flex items-center gap-2 text-white/75">
-                    <span className="text-white/45">Detection</span>
-                    <label className="flex items-center gap-1.5 cursor-pointer">
-                      <input
-                        type="radio"
-                        name="detectionMode"
-                        checked={detectionMode === "api"}
-                        onChange={() => setDetectionMode("api")}
-                        disabled={isRunning}
-                        className="rounded-full"
-                      />
-                      API
-                    </label>
-                    <label className="flex items-center gap-1.5 cursor-pointer">
-                      <input
-                        type="radio"
-                        name="detectionMode"
-                        checked={detectionMode === "local"}
-                        onChange={() => setDetectionMode("local")}
-                        disabled={isRunning}
-                        className="rounded-full"
-                      />
-                      Local
-                    </label>
+              {isRunning && (
+                <div className="pointer-events-auto max-w-[min(100%,15rem)] rounded-2xl border border-white/10 bg-black/35 p-3 backdrop-blur-md">
+                  <div className="text-[10px] font-semibold uppercase tracking-[0.24em] text-white/45">
+                    {detectionMode === "api" ? "API detection" : "Local detection"}
                   </div>
-                  <label className="flex items-center gap-2 cursor-pointer text-white/75">
-                    <input
-                      type="checkbox"
-                      checked={mockLocation}
-                      onChange={(e) => setMockLocation(e.target.checked)}
-                      className="rounded"
-                    />
-                    Mock location
-                  </label>
+                  <div className="mt-2 text-xs text-white/80">
+                    <LocationStatus coords={coords} near={near} geoLoading={geoLoading} geoError={geoError} />
+                  </div>
                 </div>
-                <div className="mt-2 text-xs text-white/80">
-                  <LocationStatus coords={coords} near={near} geoLoading={geoLoading} geoError={geoError} />
-                </div>
-              </div>
+              )}
             </div>
           </div>
 
           <div className="absolute inset-x-0 bottom-0 z-10 flex flex-col items-center gap-3">
-            {isRunning && (
-              <FilterPicker activeId={activeFilterId} onSelect={setActiveFilterId} />
+            {!isRunning && (
+              <StartPanel
+                canStart={canStart}
+                detectionMode={detectionMode}
+                onDetectionMode={setDetectionMode}
+                mockLocation={mockLocation}
+                onMockLocation={setMockLocation}
+                coords={coords}
+                near={near}
+                geoLoading={geoLoading}
+                geoError={geoError}
+                modelReady={!!session}
+                onStart={handleStart}
+              />
             )}
 
-            <CameraControls
-              onStart={handleStart}
-              onStop={stopWebcam}
-              canStart={canStart}
-              isRunning={isRunning}
-              zoom={zoom}
-              onZoom={setZoom}
-              zoomCaps={zoomCaps}
-              className="pointer-events-auto px-6 pb-[calc(env(safe-area-inset-bottom)+1.5rem)] sm:px-8 sm:pb-8"
-            />
+            {isRunning && (
+              <>
+                <FilterPicker activeId={activeFilterId} onSelect={setActiveFilterId} />
+                <CameraControls
+                  onStart={handleStart}
+                  onStop={stopWebcam}
+                  onCapture={capturePhoto}
+                  lastPhoto={latestPhoto}
+                  onOpenLibrary={openLibrary}
+                  canStart={canStart}
+                  isRunning={isRunning}
+                  zoom={zoom}
+                  onZoom={setZoom}
+                  zoomCaps={zoomCaps}
+                  className="pointer-events-auto px-6 pb-[calc(env(safe-area-inset-bottom)+1.5rem)] sm:px-8 sm:pb-8"
+                />
+              </>
+            )}
           </div>
+
+          {isLibraryOpen && (
+            <PhotoLibrary photos={photos} onClose={closeLibrary} />
+          )}
         </div>
       </div>
     </div>
