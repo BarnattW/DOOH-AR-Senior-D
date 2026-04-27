@@ -58,10 +58,6 @@ export default function App() {
     if (f) activeFilterRef.current = f;
   }, [arState, activeFilterId]);
 
-  // Keep PixiJS ref in sync with detections from store
-  useEffect(() => {
-    lastDetectionsRef.current = detections;
-  }, [detections]);
 
   // ── PixiJS overlay ────────────────────────────────────────────────────────
   usePixiOverlay({
@@ -113,13 +109,18 @@ export default function App() {
   }, [activeFilterId, tutorialStep, skipTutorial]);
 
   // ── Detection loop ────────────────────────────────────────────────────────
+  const handleDetections = useCallback((formatted) => {
+    lastDetectionsRef.current = formatted; // direct write — no render cycle, Pixi reads immediately
+    onDetections(formatted);               // store for arState machine + React UI
+  }, [onDetections]);
+
   useDetectionLoop({
     isRunning,
     session,
     videoRef,
     canvasRef: pixiCanvasRef,
     detect,
-    onDetections,
+    onDetections: handleDetections,
   });
 
   const {
