@@ -53,7 +53,6 @@ export default function App() {
   // ── Active filter — state drives UI, ref drives render loop (zero re-renders) ──
   const [activeFilterId, setActiveFilterId] = useState(DEFAULT_FILTER_ID);
   const activeFilterRef = useRef(FILTERS.find(f => f.id === DEFAULT_FILTER_ID));
-
   useEffect(() => {
     const f = FILTERS.find(f => f.id === activeFilterId);
     if (f) activeFilterRef.current = f;
@@ -174,6 +173,7 @@ export default function App() {
   }, [capturePhoto, activeFilterId, near]);
 
   const canStart = !isRunning;
+  const detectionReady = !!session && !geoLoading && !geoError && !!near?.ok;
   const showHoldPrompt = !hasCompletedIntroPrompt && !!pendingLabel && detections.length === 0;
 
   const handleStart = async () => {
