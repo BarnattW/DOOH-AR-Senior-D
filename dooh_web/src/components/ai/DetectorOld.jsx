@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { BUILDING_CLASSES } from "../../constants/buildings";
 
 let ort = null;
@@ -107,7 +107,7 @@ async function loadSessionOnce() {
     console.log("⏳ Loading YOLO ONNX model (local)...");
 
     const s = await ortMod.InferenceSession.create("/trio_finetuned_32.onnx", {
-      executionProviders: ["webgpu", "wasm"],
+      executionProviders: ["wasm"],
     });
 
     console.log("✅ Model loaded:", s.inputNames, "→", s.outputNames);
@@ -131,7 +131,10 @@ export function useDetector() {
 
     loadSessionOnce()
       .then((s) => {
-        if (alive) setSession(s);
+        if (alive) {
+          console.log("[detect] session state set — detection ready");
+          setSession(s);
+        }
       })
       .catch((e) => console.error("Failed to load model:", e));
 
@@ -140,15 +143,25 @@ export function useDetector() {
     };
   }, []);
 
-  const detect = async (imageElement, canvasRef, drawAROverlay) => {
-    if (!session || !imageElement) {
-      console.warn("Model not loaded yet or image not available");
+  const detect = useCallback(async (imageElement, canvasRef, drawAROverlay) => {
+    if (!session) {
+      console.warn("[detect] session not ready");
+      return [];
+    }
+    if (!imageElement) {
+      console.warn("[detect] no image element");
       return [];
     }
 
-    const ortMod = await loadOrtOnce();
     const iw = imageElement.videoWidth || imageElement.width;
     const ih = imageElement.videoHeight || imageElement.height;
+    if (!iw || !ih) {
+      console.warn("[detect] image has no dimensions yet");
+      return [];
+    }
+
+    const t0 = performance.now();
+    const ortMod = await loadOrtOnce();
 
     const { data, ratio, dx, dy } = letterbox(imageElement);
     const w = LETTERBOX_SIZE;
@@ -163,7 +176,12 @@ export function useDetector() {
     }
 
     const input = new ortMod.Tensor("float32", img, [1, 3, h, w]);
+    console.log("[detect] input ready, calling session.run...");
+    const runT0 = performance.now();
     const outputs = await session.run({ [session.inputNames[0]]: input });
+    console.log(`[detect] session.run done in ${(performance.now() - runT0).toFixed(0)}ms`);
+    const inferenceMs = (performance.now() - t0).toFixed(0);
+
     const output = outputs[session.outputNames[0]];
     const dataArr = output.data;
     const shape = output.dims;
@@ -172,7 +190,7 @@ export function useDetector() {
     const numPred = shape[2];
 
     if (numFeatures !== NUM_FEATURES) {
-      console.warn(`Expected ${NUM_FEATURES} features but got ${numFeatures}.`);
+      console.warn(`[detect] expected ${NUM_FEATURES} features, got ${numFeatures} — wrong model?`);
     }
 
     const sigmoid = (x) => {
@@ -193,6 +211,7 @@ export function useDetector() {
     const toProcess = candidates.slice(0, Math.min(TOP_K, candidates.length));
 
     const boxes = [];
+    let topConf = 0;
     for (const c of toProcess) {
       const i = c.idx;
       const x = dataArr[0 * numPred + i];
@@ -207,6 +226,8 @@ export function useDetector() {
       ];
       const classId = scores.indexOf(Math.max(scores[0], scores[1], scores[2]));
       const conf = scores[classId];
+
+      if (conf > topConf) topConf = conf;
 
       if (conf > CONF_THRESH) {
         let x1 = (x - wBox / 2 - dx) / ratio;
@@ -225,9 +246,9 @@ export function useDetector() {
 
     const filtered = nms(boxes);
 
-    if (import.meta.env.DEV) {
-      console.log(`[local detect] ${filtered.length} detection(s)`);
-    }
+    console.log(
+      `[detect] ${inferenceMs}ms | candidates:${candidates.length} | boxes>${CONF_THRESH}:${boxes.length} | after NMS:${filtered.length} | topConf:${topConf.toFixed(3)}`
+    );
 
     if (drawAROverlay && canvasRef?.current && filtered.length > 0) {
       const ctx = canvasRef.current.getContext("2d");
@@ -250,7 +271,7 @@ export function useDetector() {
     }
 
     return filtered;
-  };
+  }, [session]);
 
   return { session, detect };
 }

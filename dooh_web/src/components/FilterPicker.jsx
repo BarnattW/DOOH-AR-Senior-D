@@ -5,7 +5,7 @@ import { FILTERS } from '../filters';
  * Horizontal scrollable filter selector pinned inside the camera view.
  * Shows the active filter name as a fading badge above the pill row.
  */
-export default function FilterPicker({ activeId, onSelect }) {
+export default function FilterPicker({ activeId, onSelect, pulsing = false }) {
   const [toast, setToast]   = useState(null);   // { label, key }
   const toastTimer          = useRef(null);
 
@@ -36,7 +36,8 @@ export default function FilterPicker({ activeId, onSelect }) {
 
       {/* Pill row */}
       <div
-        className="flex max-w-full gap-2 overflow-x-auto px-1 pb-1 pointer-events-auto scrollbar-hide"
+        className={`flex max-w-full gap-2 overflow-x-auto px-1 pb-1 pointer-events-auto scrollbar-hide rounded-2xl transition-all duration-500
+          ${pulsing ? 'ring-2 ring-white/50 ring-offset-2 ring-offset-transparent animate-pulse' : ''}`}
         style={{ WebkitOverflowScrolling: 'touch' }}
       >
         {FILTERS.map(f => (

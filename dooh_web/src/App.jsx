@@ -14,6 +14,7 @@ import FilterPicker from "./components/FilterPicker";
 import PhotoLibrary from "./components/PhotoLibrary";
 import PostcardEditor from "./components/PostcardEditor";
 import StartPanel from "./components/StartPanel";
+import TutorialCard from "./components/onboarding/TutorialCard";
 
 const EMPIRE_STATE = { lat: 40.748817, lng: -73.985428 };
 const RADIUS_M = 5000;
@@ -54,9 +55,14 @@ export default function App() {
   const [activeFilterId, setActiveFilterId] = useState(DEFAULT_FILTER_ID);
   const activeFilterRef = useRef(FILTERS.find(f => f.id === DEFAULT_FILTER_ID));
   useEffect(() => {
-    const f = FILTERS.find(f => f.id === activeFilterId);
-    if (f) activeFilterRef.current = f;
-  }, [activeFilterId]);
+    if (pendingLabel) {
+      const glitchFilter = FILTERS.find(f => f.id === 'glitch');
+      if (glitchFilter) activeFilterRef.current = glitchFilter;
+    } else {
+      const f = FILTERS.find(f => f.id === activeFilterId);
+      if (f) activeFilterRef.current = f;
+    }
+  }, [activeFilterId, pendingLabel]);
 
   // Keep PixiJS ref in sync with confirmed detections
   useEffect(() => {
@@ -128,13 +134,59 @@ export default function App() {
   }, []);
 
   // ── PixiJS overlay ────────────────────────────────────────────────────────
+  const isHoldingRef = useRef(false);
+  useEffect(() => {
+    isHoldingRef.current = !!pendingLabel;
+  }, [pendingLabel]);
+
   usePixiOverlay({
     canvasRef: pixiCanvasRef,
     videoRef,
     isRunning,
     lastDetectionsRef,
     activeFilterRef,
+    isHoldingRef,
   });
+
+  // ── Tutorial ──────────────────────────────────────────────────────────────
+  // 0=point, 1=detect/hold, 2=explore filters, 3=done
+  const [tutorialStep, setTutorialStep] = useState(
+    () => localStorage.getItem("dooh_onboarde") === "true" ? 3 : 0
+  );
+  const hasSeenDetectionRef = useRef(false);
+
+  const skipTutorial = useCallback(() => {
+    localStorage.setItem("dooh_onboarded", "true");
+    setTutorialStep(3);
+  }, []);
+
+  // Step 0 → 1: first detection fires
+  useEffect(() => {
+    if (tutorialStep === 0 && rawDetections.length > 0 && !hasSeenDetectionRef.current) {
+      hasSeenDetectionRef.current = true;
+      setTutorialStep(1);
+    }
+  }, [rawDetections, tutorialStep]);
+
+  // Step 1 → 2: hold timer completes (AR locked)
+  useEffect(() => {
+    if (tutorialStep === 1 && hasCompletedIntroPrompt) {
+      setTutorialStep(2);
+    }
+  }, [hasCompletedIntroPrompt, tutorialStep]);
+
+  // Step 2 → 3: user selects any filter
+  const prevFilterIdRef = useRef(activeFilterId);
+  useEffect(() => {
+    if (tutorialStep === 2 && activeFilterId !== prevFilterIdRef.current) {
+      skipTutorial();
+    }
+    prevFilterIdRef.current = activeFilterId;
+  }, [activeFilterId, tutorialStep, skipTutorial]);
+
+  const handleDetections = useCallback((formatted) => {
+    setRawDetections(formatted);
+  }, []);
 
   // ── Detection loop ────────────────────────────────────────────────────────
   useDetectionLoop({
@@ -143,9 +195,7 @@ export default function App() {
     videoRef,
     canvasRef: pixiCanvasRef,
     detect,
-    onDetections: (formatted) => {
-      setRawDetections(formatted);
-    },
+    onDetections: handleDetections,
   });
 
   const {
@@ -272,7 +322,7 @@ export default function App() {
 
             {isRunning && (
               <>
-                <FilterPicker activeId={activeFilterId} onSelect={setActiveFilterId} />
+                <FilterPicker activeId={activeFilterId} onSelect={setActiveFilterId} pulsing={tutorialStep === 2} />
                 <CameraControls
                   onStart={handleStart}
                   onStop={stopWebcam}
@@ -312,6 +362,33 @@ export default function App() {
                   locationLabel: postcardPhoto.locationLabel,
                 });
               }}
+            />
+          )}
+
+          {/* Step 0 — corner brackets + point card */}
+          {tutorialStep === 0 && isRunning && (
+            <>
+              <div className="pointer-events-none absolute inset-0 z-20">
+                <div className="absolute top-20 left-5 w-9 h-9 border-l-2 border-t-2 border-white/50 rounded-tl animate-pulse" />
+                <div className="absolute top-20 right-5 w-9 h-9 border-r-2 border-t-2 border-white/50 rounded-tr animate-pulse" />
+                <div className="absolute bottom-48 left-5 w-9 h-9 border-l-2 border-b-2 border-white/50 rounded-bl animate-pulse" />
+                <div className="absolute bottom-48 right-5 w-9 h-9 border-r-2 border-b-2 border-white/50 rounded-br animate-pulse" />
+              </div>
+              <TutorialCard
+                title="Point at a building"
+                description="Aim your camera at the Empire State Building, Hudson Yards, or One World Trade Center."
+                onSkip={skipTutorial}
+              />
+            </>
+          )}
+
+          {/* Step 2 — filter glow + explore card */}
+          {tutorialStep === 2 && isRunning && (
+            <TutorialCard
+              title="Try a filter"
+              description="Swipe the filter strip below and tap one to apply an AR effect to the building."
+              position="bottom"
+              onSkip={skipTutorial}
             />
           )}
         </div>
