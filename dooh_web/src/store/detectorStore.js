@@ -119,5 +119,3 @@ export const useDetectorStore = create((set, get) => ({
   },
 }));
 
-// Kick off worker immediately on module import
-useDetectorStore.getState().init();

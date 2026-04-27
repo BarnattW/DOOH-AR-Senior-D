@@ -1,19 +1,34 @@
+import { useEffect } from "react";
 import { useDetector as useApiDetector } from "../components/ai/Detector";
 import { useWorkerDetector } from "./useWorkerDetector";
+import { useDetectorStore } from "../store/detectorStore";
 
-/**
- * Runs both detector hooks (valid under Rules of Hooks) and returns the active pair.
- * Local inference runs in a Web Worker to keep the main thread free.
- * @param {"api" | "local"} mode
- */
+const API_GRACE_MS = 3000; // wait this long for WS to connect before starting worker
+
 export function useDetectorMode(mode) {
   const api = useApiDetector();
   const local = useWorkerDetector();
-  const isApi = mode === "api";
-  // Fall back to local when API session is unavailable (no WS URL or not connected)
-  const useLocal = !isApi || !api.session;
-  return {
-    session: useLocal ? local.session : api.session,
-    detect: useLocal ? local.detect : api.detect,
-  };
+
+  const apiAvailable = mode === "api" && !!api.session;
+
+  useEffect(() => {
+    if (apiAvailable) return; // server is up, no need for worker
+
+    if (mode === "local") {
+      // User explicitly chose local — start immediately
+      useDetectorStore.getState().init();
+      return;
+    }
+
+    // API mode but server not yet connected — give it a grace period
+    const t = setTimeout(() => {
+      useDetectorStore.getState().init();
+    }, API_GRACE_MS);
+
+    return () => clearTimeout(t);
+  }, [mode, apiAvailable]);
+
+  return apiAvailable
+    ? { session: api.session, detect: api.detect }
+    : { session: local.session, detect: local.detect };
 }

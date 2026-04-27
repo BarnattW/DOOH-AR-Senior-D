@@ -1,9 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { BUILDING_CLASSES } from "../../constants/buildings";
 
-export { BUILDING_CLASSES };
+export { BUILDING_CLASSES } from "../../constants/buildings";
 
-const DETECT_WS_URL = import.meta.env.VITE_DETECT_URL;
+const DETECT_WS_URL = import.meta.env.VITE_DETECT_WS_URL;
 
 async function frameToJpegBlob(imageElement, quality = 0.7) {
   const iw = imageElement.videoWidth || imageElement.width;
@@ -30,7 +29,6 @@ export function useDetector() {
   const nextReconnectAtRef = useRef(0);
 
   const getReconnectDelayMs = useCallback((attempt) => {
-    // 250ms, 500ms, 1000ms, 2000ms, 4000ms (max 5s)
     return Math.min(5000, 250 * 2 ** Math.max(0, attempt - 1));
   }, []);
 
@@ -42,7 +40,7 @@ export function useDetector() {
 
   const connect = useCallback(() => {
     if (!DETECT_WS_URL) {
-      console.error("Missing websocket detection URL.");
+      console.error("[Detect] Missing VITE_DETECT_WS_URL");
       return Promise.resolve(null);
     }
 
@@ -54,8 +52,7 @@ export function useDetector() {
       return connectPromiseRef.current;
     }
 
-    const now = Date.now();
-    if (now < nextReconnectAtRef.current) {
+    if (Date.now() < nextReconnectAtRef.current) {
       return Promise.resolve(null);
     }
 
@@ -64,12 +61,7 @@ export function useDetector() {
       ws.binaryType = "arraybuffer";
 
       const handleOpen = () => {
-        if (isUnmountedRef.current) {
-          ws.close();
-          resolve(null);
-          return;
-        }
-
+        if (isUnmountedRef.current) { ws.close(); resolve(null); return; }
         console.log("[Detect] WebSocket connected →", DETECT_WS_URL);
         wsRef.current = ws;
         setSession({ provider: "websocket", url: DETECT_WS_URL });
@@ -81,7 +73,6 @@ export function useDetector() {
 
       const handleMessage = (event) => {
         if (!pendingRequestRef.current) return;
-
         try {
           const parsed = typeof event.data === "string" ? JSON.parse(event.data) : event.data;
           pendingRequestRef.current.resolve(Array.isArray(parsed) ? parsed : []);
@@ -93,34 +84,25 @@ export function useDetector() {
       };
 
       const handleClose = (event) => {
-        if (wsRef.current === ws) {
-          wsRef.current = null;
-        }
+        if (wsRef.current === ws) wsRef.current = null;
         setSession(null);
         connectPromiseRef.current = null;
         if (!isUnmountedRef.current) {
           reconnectAttemptRef.current += 1;
           const waitMs = getReconnectDelayMs(reconnectAttemptRef.current);
           nextReconnectAtRef.current = Date.now() + waitMs;
-          console.warn(
-            "[Detect] WebSocket closed:",
-            `code=${event.code}`,
-            `reason=${event.reason || "none"}`,
-            `wasClean=${event.wasClean}`,
-            `retryIn=${waitMs}ms`
-          );
+          console.warn("[Detect] WebSocket closed:", `code=${event.code}`, `retryIn=${waitMs}ms`);
         }
-        rejectPending(new Error("Detection websocket closed."));
+        rejectPending(new Error("WebSocket closed"));
       };
 
       const handleError = () => {
-        const error = new Error("Detection websocket failed.");
-        console.error("[Detect] WebSocket error event.");
+        console.error("[Detect] WebSocket error");
         if (ws.readyState !== WebSocket.OPEN) {
           connectPromiseRef.current = null;
-          reject(error);
+          reject(new Error("WebSocket failed"));
         }
-        rejectPending(error);
+        rejectPending(new Error("WebSocket error"));
       };
 
       ws.addEventListener("open", handleOpen, { once: true });
@@ -135,17 +117,11 @@ export function useDetector() {
   useEffect(() => {
     isUnmountedRef.current = false;
     void connect();
-
     return () => {
       isUnmountedRef.current = true;
       setSession(null);
-      rejectPending(new Error("Detection websocket closed."));
-
-      if (wsRef.current) {
-        wsRef.current.close();
-        wsRef.current = null;
-      }
-
+      rejectPending(new Error("Detector unmounted"));
+      if (wsRef.current) { wsRef.current.close(); wsRef.current = null; }
       connectPromiseRef.current = null;
     };
   }, [connect, rejectPending]);
@@ -161,26 +137,21 @@ export function useDetector() {
     if (!blob) return [];
 
     const bytes = await blob.arrayBuffer();
-    const reqStart = performance.now();
-    console.log("[Detect] WebSocket →", DETECT_WS_URL, "| blob:", `${(blob.size / 1024).toFixed(1)}KB`);
+    const t0 = performance.now();
+    console.log("[Detect] → sending frame", `${(blob.size / 1024).toFixed(1)}KB`);
 
     try {
       const response = await new Promise((resolve, reject) => {
         pendingRequestRef.current = { resolve, reject };
         ws.send(bytes);
       });
-
-      const duration = (performance.now() - reqStart).toFixed(0);
-      console.log("[Detect] Response ✓", `(${duration}ms) | detections:`, response?.length ?? 0, response);
+      console.log("[Detect] ← response", `${(performance.now() - t0).toFixed(0)}ms`, "| detections:", response?.length ?? 0, response);
       return Array.isArray(response) ? response : [];
     } catch (error) {
-      console.error("[Detect] WebSocket request failed:", error?.message || error);
+      console.error("[Detect] request failed:", error?.message || error);
       return [];
     }
   }, [connect]);
 
-  return {
-    session,
-    detect,
-  };
+  return { session, detect };
 }
