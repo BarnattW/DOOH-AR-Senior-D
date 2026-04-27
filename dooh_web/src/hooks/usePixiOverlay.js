@@ -46,6 +46,7 @@ export function usePixiOverlay({ canvasRef: containerRef, videoRef, isRunning, l
       });
 
       appRef.current = app;
+      container.__pixiApp = app;
       filterCacheRef.current = {};
 
       container.appendChild(app.view);
@@ -151,6 +152,9 @@ export function usePixiOverlay({ canvasRef: containerRef, videoRef, isRunning, l
       if (appRef.current) {
         appRef.current.destroy(true);
         appRef.current = null;
+      }
+      if (containerRef.current) {
+        delete containerRef.current.__pixiApp;
       }
     };
   }, [isRunning, containerRef, videoRef, lastDetectionsRef, activeFilterRef]);
