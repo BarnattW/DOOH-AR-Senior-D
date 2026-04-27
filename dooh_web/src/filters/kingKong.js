@@ -7,6 +7,7 @@ export const label = 'King Kong';
 const KING_KONG_MODEL_PATH = '/assets/king_kong_scene_low_poly/scene.gltf';
 const MODEL_DEPTH = 3.5;
 const MODEL_OFFSET_Y = -150;
+const MODEL_OFFSET_X_FACTOR = 0.6;
 const MODEL_SCALE = 0.01;
 
 let kingKongGltf = null;
@@ -47,7 +48,6 @@ export function draw(gfx, textContainer, detections) {
 export function draw3d(scene3d, detections, time) {
   const det = detections[0];
   const { x1, y1, x2, y2 } = det.box;
-  const cx = (x1 + x2) / 2;
   const cy = (y1 + y2) / 2;
   const w = x2 - x1;
   const h = y2 - y1;
@@ -55,7 +55,8 @@ export function draw3d(scene3d, detections, time) {
 
   if (!PIXI3D.Camera.main || !kingKongGltf) return;
 
-  const worldPos = PIXI3D.Camera.main.screenToWorld(cx, cy - MODEL_OFFSET_Y, MODEL_DEPTH);
+  const screenX = x1 - w * MODEL_OFFSET_X_FACTOR;
+  const worldPos = PIXI3D.Camera.main.screenToWorld(screenX, cy - MODEL_OFFSET_Y, MODEL_DEPTH);
   if (!worldPos) return;
 
   // Scale model based on bounding box size
@@ -65,5 +66,5 @@ export function draw3d(scene3d, detections, time) {
   const model = scene3d.addChild(PIXI3D.Model.from(kingKongGltf));
   model.position.set(worldPos.x, worldPos.y, worldPos.z);
   model.scale.set(modelScale);
-  model.rotationQuaternion.setEulerAngles(0, time * 20, 0);
+  model.rotationQuaternion.setEulerAngles(0, 0, 0);
 }

@@ -2,8 +2,9 @@ import { useEffect, useRef } from "react";
 import { BUILDING_CLASSES } from "../constants/buildings";
 
 const DETECT_EVERY_MS = 50; // ~30fps — viable with WebGPU, falls back gracefully on WASM
-const MIN_CONFIDENCE = 0.6;
+const MIN_CONFIDENCE = 0.55;
 const MAX_DETECTIONS = 1;
+const DETECTION_HOLD_MS = 700;
 
 /**
  * Runs object detection on an interval and calls onDetections with formatted results.
@@ -15,6 +16,8 @@ const MAX_DETECTIONS = 1;
 export function useDetectionLoop({ isRunning, session, videoRef, canvasRef, detect, onDetections }) {
   const isDetectingRef = useRef(false);
   const latestRequestId = useRef(0);
+  const lastStableDetectionsRef = useRef([]);
+  const lastDetectionAtRef = useRef(0);
 
   useEffect(() => {
     if (!isRunning || !session) return;
@@ -44,7 +47,23 @@ export function useDetectionLoop({ isRunning, session, videoRef, canvasRef, dete
               : "Unknown",
           }));
 
-        onDetections(formatted);
+        if (formatted.length > 0) {
+          lastStableDetectionsRef.current = formatted;
+          lastDetectionAtRef.current = Date.now();
+          onDetections(formatted);
+          return;
+        }
+
+        const timeSinceLastDetection = Date.now() - lastDetectionAtRef.current;
+        if (
+          lastStableDetectionsRef.current.length > 0 &&
+          timeSinceLastDetection < DETECTION_HOLD_MS
+        ) {
+          onDetections(lastStableDetectionsRef.current);
+        } else {
+          lastStableDetectionsRef.current = [];
+          onDetections([]);
+        }
       } catch (e) {
         console.error(e);
       } finally {
@@ -52,6 +71,10 @@ export function useDetectionLoop({ isRunning, session, videoRef, canvasRef, dete
       }
     }, DETECT_EVERY_MS);
 
-    return () => clearInterval(id);
+    return () => {
+      clearInterval(id);
+      lastStableDetectionsRef.current = [];
+      lastDetectionAtRef.current = 0;
+    };
   }, [isRunning, session, videoRef, canvasRef, detect, onDetections]);
 }
