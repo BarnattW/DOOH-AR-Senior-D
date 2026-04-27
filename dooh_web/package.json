@@ -8,12 +8,13 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "onnxruntime-web": "^1.22.0",
+    "onnxruntime-web": "1.22.0",
     "pixi-filters": "^5.3.0",
     "pixi.js": "^7.4.2",
     "pixi3d": "^2.5.0",
     "react": "^18.2.0",
-    "react-dom": "^18.2.0"
+    "react-dom": "^18.2.0",
+    "zustand": "^5.0.12"
   },
   "devDependencies": {
     "@types/react": "^18.2.43",

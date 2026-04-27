@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import * as PIXI from 'pixi.js';
 import * as PIXI3D from 'pixi3d/pixi7';
 
-export function usePixiOverlay({ canvasRef: containerRef, videoRef, isRunning, lastDetectionsRef, activeFilterRef }) {
+export function usePixiOverlay({ canvasRef: containerRef, videoRef, isRunning, lastDetectionsRef, activeFilterRef, isHoldingRef }) {
   const appRef = useRef(null);
   const filterCacheRef = useRef({});
   const preloadCacheRef = useRef({});
@@ -116,7 +116,11 @@ export function usePixiOverlay({ canvasRef: containerRef, videoRef, isRunning, l
         }
 
         maskGfx.clear();
-        if (detections.length > 0) {
+        if (isHoldingRef?.current) {
+          maskGfx.beginFill(0xffffff);
+          maskGfx.drawRect(0, 0, width, height);
+          maskGfx.endFill();
+        } else if (detections.length > 0) {
           const { x1, y1, x2, y2 } = detections[0].box;
           maskGfx.beginFill(0xffffff);
           maskGfx.drawRect(x1, y1, x2 - x1, y2 - y1);
