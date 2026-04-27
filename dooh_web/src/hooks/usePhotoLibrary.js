@@ -12,7 +12,7 @@ export function usePhotoLibrary({ canvasContainerRef, zoom, zoomCaps }) {
     };
   }, []);
 
-  const capturePhoto = async () => {
+  const capturePhoto = async (metadata = {}) => {
     const app = canvasContainerRef.current?.__pixiApp;
     const sourceCanvas = app?.renderer?.extract?.canvas
       ? app.renderer.extract.canvas(app.stage)
@@ -49,6 +49,25 @@ export function usePhotoLibrary({ canvasContainerRef, zoom, zoomCaps }) {
         id: crypto.randomUUID?.() ?? `${Date.now()}`,
         url,
         capturedAt: new Date(),
+        detectedBuilding: metadata.detectedBuilding ?? null,
+        filterLabel: metadata.filterLabel ?? null,
+        locationLabel: metadata.locationLabel ?? null,
+      },
+      ...current,
+    ]);
+  };
+
+  const addPhoto = (blob, metadata = {}) => {
+    const url = URL.createObjectURL(blob);
+    photoUrlsRef.current.push(url);
+    setPhotos((current) => [
+      {
+        id: crypto.randomUUID?.() ?? `${Date.now()}`,
+        url,
+        capturedAt: new Date(),
+        detectedBuilding: metadata.detectedBuilding ?? null,
+        filterLabel: metadata.filterLabel ?? "Postcard",
+        locationLabel: metadata.locationLabel ?? null,
       },
       ...current,
     ]);
@@ -59,6 +78,7 @@ export function usePhotoLibrary({ canvasContainerRef, zoom, zoomCaps }) {
     latestPhoto: photos[0] ?? null,
     isLibraryOpen,
     capturePhoto,
+    addPhoto,
     openLibrary: () => setIsLibraryOpen(true),
     closeLibrary: () => setIsLibraryOpen(false),
   };
