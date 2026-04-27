@@ -3,7 +3,7 @@ import { BUILDING_CLASSES } from "../../constants/buildings";
 
 export { BUILDING_CLASSES };
 
-const DETECT_WS_URL = import.meta.env.VITE_DETECT_WS_URL;
+const DETECT_WS_URL = import.meta.env.VITE_DETECT_URL;
 
 async function frameToJpegBlob(imageElement, quality = 0.7) {
   const iw = imageElement.videoWidth || imageElement.width;

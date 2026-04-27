@@ -1,10 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { BUILDING_URLS } from "../../constants/buildings";
 
-/**
- * DetectionOverlay: Displays interactive buttons over detected buildings
- * Positions buttons based on detection bounding boxes
- */
 export function DetectionOverlay({ detections, containerRef }) {
   const buttonsContainerRef = useRef(null);
   const [buttonPositions, setButtonPositions] = useState([]);
@@ -15,41 +11,29 @@ export function DetectionOverlay({ detections, containerRef }) {
     const parentContainer = containerRef.current;
     const canvas = parentContainer.querySelector("canvas");
     
-    if (!canvas) {
-      // No canvas yet, try again in next render
-      return;
-    }
+    if (!canvas) return;
 
-    // Calculate button positions
     const positions = detections
       .map((detection) => {
         const { box, label } = detection;
         if (!box) return null;
 
         const url = BUILDING_URLS[label];
-        if (!url) return null; // No URL configured
+        if (!url) return null;
 
-        // Get canvas dimensions and bounding rect
-        const canvasRect = canvas.getBoundingClientRect();
-        const containerRect = parentContainer.getBoundingClientRect();
-
-        // Detection box is in model coordinates (typically 0-640)
-        // Calculate relative position within the displayed canvas
         const modelWidth = canvas.width;
         const modelHeight = canvas.height;
         const displayWidth = canvas.clientWidth;
         const displayHeight = canvas.clientHeight;
 
-        // Scale factors
         const scaleX = displayWidth / modelWidth;
         const scaleY = displayHeight / modelHeight;
 
-        // Calculate button position: center-top of detection box
         const boxCenterX = (box.x1 + box.x2) / 2;
         const boxBottomY = box.y2;
 
-        const posX = boxCenterX * scaleX - 55; // Center button (-55 ≈ half width)
-        const posY = Math.min(displayHeight, boxBottomY * scaleY + 12); // Below box
+        const posX = boxCenterX * scaleX - 55;
+        const posY = Math.min(displayHeight, boxBottomY * scaleY + 12);
 
         return {
           label,
@@ -67,10 +51,7 @@ export function DetectionOverlay({ detections, containerRef }) {
     <div
       ref={buttonsContainerRef}
       className="absolute inset-0 w-full h-full"
-      style={{ 
-        pointerEvents: "auto",
-        overflow: "visible"
-      }}
+      style={{ pointerEvents: "auto", overflow: "visible" }}
     >
       {buttonPositions.map((btn, idx) => (
         <button
@@ -80,24 +61,25 @@ export function DetectionOverlay({ detections, containerRef }) {
             e.stopPropagation();
             window.open(btn.url, "_blank", "noopener,noreferrer");
           }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.transform = "scale(1.1)";
-            e.currentTarget.style.boxShadow = "0 20px 40px rgba(59, 130, 246, 0.4), 0 0 20px rgba(59, 130, 246, 0.6)";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.transform = "scale(1)";
-            e.currentTarget.style.boxShadow = "0 10px 25px rgba(0, 0, 0, 0.4), 0 0 15px rgba(59, 130, 246, 0.3)";
-          }}
-          className="absolute px-5 py-3 bg-gradient-to-b from-sky-400 to-blue-500 text-white rounded-xl hover:from-sky-300 hover:to-blue-400 transition-all duration-200 text-sm shadow-xl z-20 whitespace-nowrap border border-blue-300 backdrop-blur-sm"
+          className="group absolute flex items-center gap-2 px-3.5 py-2 z-20 whitespace-nowrap
+            rounded-xl border border-white/20 bg-black/55 backdrop-blur-md
+            text-[11px] font-semibold uppercase tracking-[0.18em] text-white/75
+            hover:bg-white/10 hover:border-white/40 hover:text-white
+            active:scale-95 transition-all duration-200"
           style={{
             left: `${btn.posX}px`,
             top: `${btn.posY}px`,
-            transform: "scale(1)",
-            boxShadow: "0 10px 25px rgba(0, 0, 0, 0.4), 0 0 15px rgba(59, 130, 246, 0.3)",
-            letterSpacing: "0.5px",
+            boxShadow: "0 4px 20px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.08)",
           }}
         >
-          🔎 Learn More
+          <svg
+            className="w-3 h-3 opacity-60 group-hover:opacity-100 transition-opacity"
+            fill="none" viewBox="0 0 12 12" stroke="currentColor" strokeWidth={2}
+          >
+            <path strokeLinecap="round" strokeLinejoin="round"
+              d="M2 10L10 2M5 2h5v5" />
+          </svg>
+          Learn More
         </button>
       ))}
     </div>

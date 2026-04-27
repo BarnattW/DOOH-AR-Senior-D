@@ -12,6 +12,10 @@ export default defineConfig({
     port: 8000,
     open: true,
     https: false,
+    headers: {
+      "Cross-Origin-Opener-Policy": "same-origin",
+      "Cross-Origin-Embedder-Policy": "require-corp",
+    },
     proxy: {
       "/api/detect": {
         target: process.env.DETECT_API_BACKEND,
