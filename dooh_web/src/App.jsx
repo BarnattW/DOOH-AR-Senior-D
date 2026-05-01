@@ -15,6 +15,7 @@ import FilterPicker from "./components/FilterPicker";
 import PhotoLibrary from "./components/PhotoLibrary";
 import PostcardEditor from "./components/PostcardEditor";
 import StartPanel from "./components/StartPanel";
+import LockOnOverlay from "./components/LockOnOverlay";
 import TutorialCard from "./components/onboarding/TutorialCard";
 
 const EMPIRE_STATE = { lat: 40.748817, lng: -73.985428 };
@@ -171,6 +172,9 @@ export default function App() {
 
           {/* Detection overlay with clickable "Learn more" buttons */}
           <DetectionOverlay detections={detections} containerRef={pixiCanvasRef} />
+
+          {/* Lock-on typewriter overlay during glitching/lost states */}
+          {isRunning && <LockOnOverlay arState={arState} />}
 
           <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/55 via-transparent via-35% to-black/75" />
 
