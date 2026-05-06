@@ -47,13 +47,13 @@ def train_model():
     for cache in pathlib.Path(dataset_root).rglob("*.cache"):
         cache.unlink()
 
-    model = YOLO("yolov8s-seg.pt")
+    model = YOLO("yolov8n.pt")
 
     results = model.train(
         data=data_yaml_path,
         device=0,
         epochs=150,
-        patience=20,
+        patience=5,
         batch=16,
         workers=2,
         amp=True,
@@ -86,7 +86,7 @@ def train_model():
 
     dst_fp16 = os.path.join(project_root, "models", "custom", "fp16")
     os.makedirs(dst_fp16, exist_ok=True)
-    shutil.move(fp16_path, os.path.join(dst_fp16, "trio_finetuned_16.onnx"))
+    shutil.move(fp16_path, os.path.join(dst_fp16, "trio_finetuned_16_nano.onnx"))
 
     # fp32 export
     fp32_path = model.export(
@@ -100,7 +100,7 @@ def train_model():
 
     dst_fp32 = os.path.join(project_root, "models", "custom", "fp32")
     os.makedirs(dst_fp32, exist_ok=True)
-    shutil.move(fp32_path, os.path.join(dst_fp32, "trio_finetuned_32.onnx"))
+    shutil.move(fp32_path, os.path.join(dst_fp32, "trio_finetuned_32_nano.onnx"))
 
     print("Both FP16 and FP32 models exported and moved successfully!")
 
