@@ -1,5 +1,11 @@
 import * as PIXI from 'pixi.js';
 import * as PIXI3D from 'pixi3d/pixi7';
+import {
+  anchorPoint,
+  drawBuildingForegroundOcclusion,
+  getBoxMetrics,
+  getCachedObject,
+} from './arUtils';
 
 export const id = 'statue-of-liberty';
 export const label = 'Statue';
@@ -11,6 +17,7 @@ const MODEL_OFFSET_X_FACTOR = 0.85;
 const MODEL_SCALE = 0.00039;
 const MODEL_EXPOSURE = 1.55;
 const MODEL_EMISSIVE = 0.08;
+const BASE_ANCHOR = { x: 1 + MODEL_OFFSET_X_FACTOR, y: 1 };
 
 let statueGltf = null;
 
@@ -63,22 +70,32 @@ export function draw(gfx, textContainer, detections) {
   textContainer.addChild(title);
 }
 
-export function draw3d(scene3d, detections) {
-  const det = detections[0];
-  const { x1, y1, x2, y2 } = det.box;
-  const w = x2 - x1;
-  const boxMin = Math.max(1, Math.min(x2 - x1, y2 - y1));
+export function draw3d(scene3d, detections, time, screen, context) {
+  const metrics = getBoxMetrics(detections);
+  if (!metrics) return;
 
   if (!PIXI3D.Camera.main || !statueGltf) return;
 
-  const screenX = x2 + w * MODEL_OFFSET_X_FACTOR;
-  const worldPos = PIXI3D.Camera.main.screenToWorld(screenX, y2 + MODEL_OFFSET_Y, MODEL_DEPTH);
+  const base = anchorPoint(metrics, BASE_ANCHOR);
+  const worldPos = PIXI3D.Camera.main.screenToWorld(base.x, base.y + MODEL_OFFSET_Y, MODEL_DEPTH);
   if (!worldPos) return;
 
-  const scaleMultiplier = Math.max(1.15, Math.min(2.6, boxMin / 180));
-  const model = scene3d.addChild(PIXI3D.Model.from(statueGltf));
-  brightenModel(model);
+  const scaleMultiplier = Math.max(1.15, Math.min(2.6, metrics.minSize / 180));
+  const model = getCachedObject(context, 'statue-model', () => {
+    const instance = PIXI3D.Model.from(statueGltf);
+    brightenModel(instance);
+    return instance;
+  });
+  scene3d.addChild(model);
   model.position.set(worldPos.x, worldPos.y, worldPos.z);
   model.scale.set(MODEL_SCALE * scaleMultiplier);
   model.rotationQuaternion.setEulerAngles(0, -40, 0);
+}
+
+export function drawOcclusion(maskGfx, detections) {
+  drawBuildingForegroundOcclusion(maskGfx, detections, {
+    top: 0.62,
+    bottom: 1,
+    insetX: 0.04,
+  });
 }
