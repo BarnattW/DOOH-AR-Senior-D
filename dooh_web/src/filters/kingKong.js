@@ -25,20 +25,17 @@ export async function preload() {
   }
 }
 
-export function draw(gfx, textContainer, detections) {
-  const det = detections[0];
-  const { x1, y1, x2, y2 } = det.box;
-  const cx = (x1 + x2) / 2;
-  const w = x2 - x1;
-  const h = y2 - y1;
+export function draw(gfx, textContainer, detections, time) {
+  const metrics = getBoxMetrics(detections);
+  if (!metrics) return;
 
-  gfx.lineStyle(Math.max(2, Math.min(w, h) * 0.012), 0xffa500, 1);
-  gfx.drawRect(x1, y1, w, h);
+  gfx.lineStyle(Math.max(2, metrics.minSize * 0.012), 0xffa500, 1);
+  gfx.drawRect(metrics.x1, metrics.y1, metrics.width, metrics.height);
 
   const titleStyle = new PIXI.TextStyle({
     fontFamily: 'Arial',
     fontWeight: 'bold',
-    fontSize: Math.min(24, Math.max(14, h * 0.14)),
+    fontSize: Math.min(24, Math.max(14, metrics.height * 0.14)),
     fill: 0xffcc66,
     dropShadow: true,
     dropShadowColor: 0x000000,
@@ -48,7 +45,7 @@ export function draw(gfx, textContainer, detections) {
 
   const title = new PIXI.Text('KING KONG', titleStyle);
   title.anchor.set(0.5, 1);
-  title.position.set(cx, y1 - 8);
+  title.position.set(metrics.centerX, metrics.y1 - 8);
   textContainer.addChild(title);
 }
 
