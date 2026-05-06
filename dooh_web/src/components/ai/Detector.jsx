@@ -2,7 +2,13 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 export { BUILDING_CLASSES } from "../../constants/buildings";
 
-const DETECT_WS_URL = import.meta.env.VITE_DETECT_WS_URL;
+const DEFAULT_WS_URL = import.meta.env.VITE_DETECT_WS_URL;
+const STRONG_WS_URL = import.meta.env.VITE_DETECT_WS_URL_STRONG;
+
+export const MODEL_URLS = {
+  original: DEFAULT_WS_URL,
+  strong: STRONG_WS_URL || DEFAULT_WS_URL?.replace(/\/ws$/, "/ws_strong"),
+};
 
 async function frameToJpegBlob(imageElement, quality = 0.7) {
   const iw = imageElement.videoWidth || imageElement.width;
@@ -19,7 +25,8 @@ async function frameToJpegBlob(imageElement, quality = 0.7) {
   });
 }
 
-export function useDetector() {
+export function useDetector(model = "original", { onLatency } = {}) {
+  const wsUrl = MODEL_URLS[model];
   const [session, setSession] = useState(null);
   const wsRef = useRef(null);
   const isUnmountedRef = useRef(false);
@@ -27,6 +34,9 @@ export function useDetector() {
   const pendingRequestRef = useRef(null);
   const reconnectAttemptRef = useRef(0);
   const nextReconnectAtRef = useRef(0);
+  const onLatencyRef = useRef(onLatency);
+
+  useEffect(() => { onLatencyRef.current = onLatency; }, [onLatency]);
 
   const getReconnectDelayMs = useCallback((attempt) => {
     return Math.min(5000, 250 * 2 ** Math.max(0, attempt - 1));
@@ -39,12 +49,12 @@ export function useDetector() {
   }, []);
 
   const connect = useCallback(() => {
-    if (!DETECT_WS_URL) {
-      console.error("[Detect] Missing VITE_DETECT_WS_URL");
+    if (!wsUrl) {
+      console.error("[Detect] Missing WS URL for model:", model);
       return Promise.resolve(null);
     }
 
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
+    if (wsRef.current?.readyState === WebSocket.OPEN && wsRef.current.url === wsUrl) {
       return Promise.resolve(wsRef.current);
     }
 
@@ -57,14 +67,14 @@ export function useDetector() {
     }
 
     connectPromiseRef.current = new Promise((resolve, reject) => {
-      const ws = new WebSocket(DETECT_WS_URL);
+      const ws = new WebSocket(wsUrl);
       ws.binaryType = "arraybuffer";
 
       const handleOpen = () => {
         if (isUnmountedRef.current) { ws.close(); resolve(null); return; }
-        console.log("[Detect] WebSocket connected →", DETECT_WS_URL);
+        console.log(`[Detect] WebSocket connected → ${wsUrl} (model: ${model})`);
         wsRef.current = ws;
-        setSession({ provider: "websocket", url: DETECT_WS_URL });
+        setSession({ provider: "websocket", url: wsUrl, model });
         reconnectAttemptRef.current = 0;
         nextReconnectAtRef.current = 0;
         connectPromiseRef.current = null;
@@ -91,13 +101,13 @@ export function useDetector() {
           reconnectAttemptRef.current += 1;
           const waitMs = getReconnectDelayMs(reconnectAttemptRef.current);
           nextReconnectAtRef.current = Date.now() + waitMs;
-          console.warn("[Detect] WebSocket closed:", `code=${event.code}`, `retryIn=${waitMs}ms`);
+          console.warn(`[Detect] WebSocket disconnected (model: ${model}) code=${event.code} retryIn=${waitMs}ms`);
         }
         rejectPending(new Error("WebSocket closed"));
       };
 
       const handleError = () => {
-        console.error("[Detect] WebSocket error");
+        console.error(`[Detect] WebSocket error (model: ${model})`);
         if (ws.readyState !== WebSocket.OPEN) {
           connectPromiseRef.current = null;
           reject(new Error("WebSocket failed"));
@@ -112,10 +122,21 @@ export function useDetector() {
     });
 
     return connectPromiseRef.current;
-  }, [getReconnectDelayMs, rejectPending]);
+  }, [wsUrl, model, getReconnectDelayMs, rejectPending]);
 
+  // Reconnect on model/url change.
   useEffect(() => {
     isUnmountedRef.current = false;
+    // If a socket is open to a different URL, close it so connect() opens a fresh one.
+    if (wsRef.current && wsRef.current.url !== wsUrl) {
+      console.log("[Detect] Model changed, closing previous socket");
+      try { wsRef.current.close(); } catch {}
+      wsRef.current = null;
+      setSession(null);
+      reconnectAttemptRef.current = 0;
+      nextReconnectAtRef.current = 0;
+      rejectPending(new Error("Model changed"));
+    }
     void connect();
     return () => {
       isUnmountedRef.current = true;
@@ -124,34 +145,35 @@ export function useDetector() {
       if (wsRef.current) { wsRef.current.close(); wsRef.current = null; }
       connectPromiseRef.current = null;
     };
-  }, [connect, rejectPending]);
+  }, [connect, wsUrl, rejectPending]);
 
   const detect = useCallback(async (imageElement) => {
-    if (!imageElement || !DETECT_WS_URL) return [];
+    if (!imageElement || !wsUrl) return [];
 
     const ws = await connect();
     if (!ws || ws.readyState !== WebSocket.OPEN) return [];
-    if (pendingRequestRef.current) return [];
+    if (pendingRequestRef.current) return []; // single-flight
 
     const blob = await frameToJpegBlob(imageElement, 0.7);
     if (!blob) return [];
 
     const bytes = await blob.arrayBuffer();
     const t0 = performance.now();
-    console.log("[Detect] → sending frame", `${(blob.size / 1024).toFixed(1)}KB`);
 
     try {
       const response = await new Promise((resolve, reject) => {
         pendingRequestRef.current = { resolve, reject };
         ws.send(bytes);
       });
-      console.log("[Detect] ← response", `${(performance.now() - t0).toFixed(0)}ms`, "| detections:", response?.length ?? 0, response);
+      const latencyMs = performance.now() - t0;
+      onLatencyRef.current?.(latencyMs);
+      console.log(`[Detect] ${model} ${latencyMs.toFixed(0)}ms detections=${response?.length ?? 0}`);
       return Array.isArray(response) ? response : [];
     } catch (error) {
       console.error("[Detect] request failed:", error?.message || error);
       return [];
     }
-  }, [connect]);
+  }, [connect, wsUrl, model]);
 
   return { session, detect };
 }

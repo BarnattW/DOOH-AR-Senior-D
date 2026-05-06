@@ -1,4 +1,5 @@
 import LocationStatus from "./LocationStatus";
+import ModelToggle from "./ModelToggle";
 
 export default function StartPanel({
   canStart,
@@ -16,30 +17,7 @@ export default function StartPanel({
   return (
     <div className="pointer-events-auto w-full px-5 pb-[calc(env(safe-area-inset-bottom)+1.5rem)] sm:px-8 sm:pb-8">
       <div className="mx-auto flex w-full max-w-md flex-col gap-4 rounded-2xl border border-white/10 bg-black/55 p-4 shadow-2xl shadow-black/40 backdrop-blur-md">
-        <div className="grid grid-cols-2 gap-2 rounded-full border border-white/10 bg-white/5 p-1">
-          <button
-            type="button"
-            onClick={() => onDetectionMode("api")}
-            className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
-              detectionMode === "api"
-                ? "bg-white text-black"
-                : "text-white/70 hover:bg-white/10"
-            }`}
-          >
-            API
-          </button>
-          <button
-            type="button"
-            onClick={() => onDetectionMode("local")}
-            className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
-              detectionMode === "local"
-                ? "bg-white text-black"
-                : "text-white/70 hover:bg-white/10"
-            }`}
-          >
-            Local
-          </button>
-        </div>
+        <ModelToggle mode={detectionMode} onMode={onDetectionMode} />
 
         <label className="flex items-center justify-between gap-4 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white/80">
           <span>Mock location</span>

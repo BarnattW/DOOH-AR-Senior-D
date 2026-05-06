@@ -17,6 +17,8 @@ import PostcardEditor from "./components/PostcardEditor";
 import StartPanel from "./components/StartPanel";
 import LockOnOverlay from "./components/LockOnOverlay";
 import TutorialCard from "./components/onboarding/TutorialCard";
+import ModelToggle from "./components/ModelToggle";
+import DebugOverlay from "./components/DebugOverlay";
 
 const EMPIRE_STATE = { lat: 40.748817, lng: -73.985428 };
 const RADIUS_M = 5000;
@@ -34,9 +36,45 @@ export default function App() {
   // ── Camera ────────────────────────────────────────────────────────────────
   const { videoRef, isRunning, startWebcam, stopWebcam, zoom, setZoom, zoomCaps } = useCamera();
 
-  // ── Detection: API (Vercel proxy) vs local ONNX ───────────────────────────
-  const [detectionMode, setDetectionMode] = useState("api"); // "api" | "local"
-  const { session, detect } = useDetectorMode(detectionMode);
+  // ── Detection: original / strong WS endpoints, or local ONNX ──────────────
+  const [detectionMode, setDetectionMode] = useState("original"); // "original" | "strong" | "local"
+
+  // Stats for optional debug overlay (?debug=1). Refs so 60 FPS render isn't disturbed.
+  const statsRef = useRef({ fps: 0, latencyMs: null });
+  const fpsFramesRef = useRef(0);
+  const fpsLastRef = useRef(performance.now());
+
+  const handleLatency = useCallback((ms) => {
+    statsRef.current.latencyMs = ms;
+  }, []);
+
+  const { session, detect } = useDetectorMode(detectionMode, { onLatency: handleLatency });
+
+  useEffect(() => {
+    console.log(`[App] model selected: ${detectionMode}`);
+  }, [detectionMode]);
+
+  // Video-frame FPS sampler for the debug overlay. Uses requestVideoFrameCallback
+  // so it tracks actually-displayed video frames, independent of React renders
+  // and detection cadence.
+  useEffect(() => {
+    if (!isRunning) return;
+    const video = videoRef.current;
+    if (!video || !("requestVideoFrameCallback" in video)) return;
+    let handle;
+    const tick = (now) => {
+      fpsFramesRef.current += 1;
+      const elapsed = now - fpsLastRef.current;
+      if (elapsed >= 500) {
+        statsRef.current.fps = (fpsFramesRef.current * 1000) / elapsed;
+        fpsFramesRef.current = 0;
+        fpsLastRef.current = now;
+      }
+      handle = video.requestVideoFrameCallback(tick);
+    };
+    handle = video.requestVideoFrameCallback(tick);
+    return () => { if (handle) video.cancelVideoFrameCallback(handle); };
+  }, [isRunning, videoRef]);
   const [mockLocation, setMockLocation] = useState(false);
   const { coords, loading: geoLoading, error: geoError } = useGeolocation(mockLocation);
 
@@ -176,6 +214,9 @@ export default function App() {
           {/* Lock-on typewriter overlay during glitching/lost states */}
           {isRunning && <LockOnOverlay arState={arState} />}
 
+          {/* Optional debug overlay (?debug=1) */}
+          <DebugOverlay statsRef={statsRef} model={detectionMode} sessionUrl={session?.url} />
+
           <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/55 via-transparent via-35% to-black/75" />
 
           <div className="pointer-events-none absolute inset-x-0 top-0 z-10 px-4 pt-[max(1rem,env(safe-area-inset-top))] sm:px-5 sm:pt-5">
@@ -189,11 +230,12 @@ export default function App() {
                 </div>
               </div>
               {isRunning && (
-                <div className="pointer-events-auto max-w-[min(100%,15rem)] rounded-2xl border border-white/10 bg-black/35 p-3 backdrop-blur-md">
+                <div className="pointer-events-auto flex max-w-[min(100%,17rem)] flex-col gap-2 rounded-2xl border border-white/10 bg-black/35 p-3 backdrop-blur-md">
                   <div className="text-[10px] font-semibold uppercase tracking-[0.24em] text-white/45">
-                    {detectionMode === "api" ? "API detection" : "Local detection"}
+                    {detectionMode === "local" ? "Local detection" : `Model: ${detectionMode}`}
                   </div>
-                  <div className="mt-2 text-xs text-white/80">
+                  <ModelToggle mode={detectionMode} onMode={setDetectionMode} compact />
+                  <div className="text-xs text-white/80">
                     <LocationStatus coords={coords} near={near} geoLoading={geoLoading} geoError={geoError} />
                   </div>
                 </div>
