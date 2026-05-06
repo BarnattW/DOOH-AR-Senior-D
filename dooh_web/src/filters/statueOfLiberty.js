@@ -9,8 +9,25 @@ const MODEL_DEPTH = 4.2;
 const MODEL_OFFSET_Y = -30;
 const MODEL_OFFSET_X_FACTOR = 0.85;
 const MODEL_SCALE = 0.00039;
+const MODEL_EXPOSURE = 1.55;
+const MODEL_EMISSIVE = 0.08;
 
 let statueGltf = null;
+
+function brightenModel(model) {
+  model.meshes.forEach((mesh) => {
+    const material = mesh.material;
+    if (!material) return;
+
+    if ('exposure' in material) {
+      material.exposure = MODEL_EXPOSURE;
+    }
+
+    if (material.emissive) {
+      material.emissive = new PIXI3D.Color(MODEL_EMISSIVE, MODEL_EMISSIVE * 1.25, MODEL_EMISSIVE);
+    }
+  });
+}
 
 export async function preload() {
   if (!statueGltf) {
@@ -60,6 +77,7 @@ export function draw3d(scene3d, detections) {
 
   const scaleMultiplier = Math.max(1.15, Math.min(2.6, boxMin / 180));
   const model = scene3d.addChild(PIXI3D.Model.from(statueGltf));
+  brightenModel(model);
   model.position.set(worldPos.x, worldPos.y, worldPos.z);
   model.scale.set(MODEL_SCALE * scaleMultiplier);
   model.rotationQuaternion.setEulerAngles(0, -40, 0);
