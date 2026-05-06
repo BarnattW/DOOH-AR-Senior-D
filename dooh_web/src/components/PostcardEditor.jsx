@@ -338,24 +338,52 @@ const DRAW_FNS = { split: drawSplit, strip: drawStrip, border: drawBorder };
 
 // ── Component ─────────────────────────────────────────────────────────────────
 export default function PostcardEditor({ photo, onClose, onSaveToLibrary }) {
-  const [activeTemplate,   setActiveTemplate]   = useState("split");
-  const [selectedBuilding, setSelectedBuilding] = useState(photo.detectedBuilding ?? null);
+  const [activeTemplate,     setActiveTemplate]     = useState("split");
+  const [selectedBuilding,   setSelectedBuilding]   = useState(photo.detectedBuilding ?? null);
   const [showBuildingPicker, setShowBuildingPicker] = useState(false);
-  const [photoTransform,   setPhotoTransform]   = useState({ panX: 0, panY: 0, scale: 1 });
-  const [cropMode,         setCropMode]         = useState(false);
-  const [previewUrl,       setPreviewUrl]       = useState(null);
-  const [saving,           setSaving]           = useState(false);
-  const [libSaved,         setLibSaved]         = useState(false);
+  const [photoTransform,     setPhotoTransform]     = useState({ panX: 0, panY: 0, scale: 1 });
+  const [cropMode,           setCropMode]           = useState(false);
+  const [previewUrl,         setPreviewUrl]         = useState(null);
+  const [saving,             setSaving]             = useState(false);
+  const [libSaved,           setLibSaved]           = useState(false);
 
-  const canvasRef   = useRef(null);
-  const renderTimer = useRef(null);
-  const dragRef     = useRef(null);
+  const canvasRef      = useRef(null);
+  const renderTimer    = useRef(null);
+  const dragRef        = useRef(null);
+  const transformRef   = useRef(photoTransform);   // always-current, no re-render cost
+  const imgCacheRef    = useRef(null);             // loaded Image element, reused for live renders
+  const rafRef         = useRef(null);
+
+  // Cache the photo image so live renders are synchronous
+  useEffect(() => {
+    ensureFonts().then(() => document.fonts.ready).then(() => {
+      const img = new Image();
+      img.src = photo.url;
+      img.onload = () => { imgCacheRef.current = img; };
+    });
+  }, [photo.url]);
+
+  // Keep transformRef in sync whenever state changes (e.g. Reset button, template switch)
+  useEffect(() => {
+    transformRef.current = photoTransform;
+  }, [photoTransform]);
 
   useEffect(() => {
     setPhotoTransform({ panX: 0, panY: 0, scale: 1 });
     setCropMode(false);
   }, [activeTemplate]);
 
+  // Synchronous canvas draw using cached image — used for live crop feedback
+  const renderLiveToCanvas = useCallback((transform) => {
+    const canvas = canvasRef.current;
+    const img    = imgCacheRef.current;
+    if (!canvas || !img) return;
+    canvas.width = W; canvas.height = H;
+    const ctx = canvas.getContext("2d");
+    DRAW_FNS[activeTemplate](ctx, img, getBuildingName(selectedBuilding), photo.capturedAt, transform);
+  }, [activeTemplate, selectedBuilding, photo.capturedAt]);
+
+  // Full async render → updates previewUrl (used outside crop mode and for save)
   const render = useCallback(async () => {
     const canvas = canvasRef.current;
     if (!canvas) return null;
@@ -363,11 +391,14 @@ export default function PostcardEditor({ photo, onClose, onSaveToLibrary }) {
     const ctx = canvas.getContext("2d");
     await ensureFonts();
     await document.fonts.ready;
-    const img = new Image();
-    img.src = photo.url;
-    await new Promise((res) => { img.onload = res; img.onerror = res; });
-    const building = getBuildingName(selectedBuilding);
-    DRAW_FNS[activeTemplate](ctx, img, building, photo.capturedAt, photoTransform);
+    let img = imgCacheRef.current;
+    if (!img) {
+      img = new Image();
+      img.src = photo.url;
+      await new Promise((res) => { img.onload = res; img.onerror = res; });
+      imgCacheRef.current = img;
+    }
+    DRAW_FNS[activeTemplate](ctx, img, getBuildingName(selectedBuilding), photo.capturedAt, photoTransform);
     return canvas;
   }, [photo, activeTemplate, selectedBuilding, photoTransform]);
 
@@ -382,28 +413,50 @@ export default function PostcardEditor({ photo, onClose, onSaveToLibrary }) {
     return () => { cancelled = true; clearTimeout(renderTimer.current); };
   }, [render]);
 
-  // ── Crop ──────────────────────────────────────────────────────────────────
+  // ── Crop — bypass React state during drag for 60fps smoothness ────────────
   const handlePointerDown = (e) => {
     e.currentTarget.setPointerCapture(e.pointerId);
     dragRef.current = {
-      startX: e.clientX, startY: e.clientY,
-      startPanX: photoTransform.panX, startPanY: photoTransform.panY,
-      w: e.currentTarget.offsetWidth, h: e.currentTarget.offsetHeight,
+      startX:    e.clientX,
+      startY:    e.clientY,
+      startPanX: transformRef.current.panX,
+      startPanY: transformRef.current.panY,
+      w: e.currentTarget.offsetWidth,
+      h: e.currentTarget.offsetHeight,
     };
   };
+
   const handlePointerMove = (e) => {
     if (!dragRef.current) return;
     const { startX, startY, startPanX, startPanY, w, h } = dragRef.current;
-    setPhotoTransform(prev => ({
-      ...prev,
-      panX: Math.max(-1, Math.min(1, startPanX - (e.clientX - startX) / (w * 0.5) * prev.scale)),
-      panY: Math.max(-1, Math.min(1, startPanY - (e.clientY - startY) / (h * 0.5) * prev.scale)),
-    }));
+    const scale = transformRef.current.scale;
+    const next = {
+      ...transformRef.current,
+      panX: Math.max(-1, Math.min(1, startPanX - (e.clientX - startX) / (w * 0.5) * scale)),
+      panY: Math.max(-1, Math.min(1, startPanY - (e.clientY - startY) / (h * 0.5) * scale)),
+    };
+    transformRef.current = next;
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    rafRef.current = requestAnimationFrame(() => renderLiveToCanvas(next));
   };
-  const handlePointerUp   = () => { dragRef.current = null; };
-  const handleWheel       = (e) => {
+
+  const handlePointerUp = () => {
+    dragRef.current = null;
+    if (rafRef.current) { cancelAnimationFrame(rafRef.current); rafRef.current = null; }
+    // Commit final position to state → triggers debounced previewUrl update
+    setPhotoTransform(transformRef.current);
+  };
+
+  const handleWheel = (e) => {
     e.preventDefault();
-    setPhotoTransform(prev => ({ ...prev, scale: Math.max(1, Math.min(4, prev.scale + (e.deltaY > 0 ? -0.12 : 0.12))) }));
+    const next = {
+      ...transformRef.current,
+      scale: Math.max(1, Math.min(4, transformRef.current.scale + (e.deltaY > 0 ? -0.12 : 0.12))),
+    };
+    transformRef.current = next;
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    rafRef.current = requestAnimationFrame(() => renderLiveToCanvas(next));
+    setPhotoTransform(next); // keep scale label in sync
   };
 
   // ── Save ──────────────────────────────────────────────────────────────────
@@ -479,19 +532,34 @@ export default function PostcardEditor({ photo, onClose, onSaveToLibrary }) {
 
       {/* Preview */}
       <div className="relative flex min-h-0 flex-1 items-center justify-center p-4">
-        {previewUrl ? (
+        {/* Static preview — hidden while cropping so canvas shows through */}
+        {previewUrl && !cropMode && (
           <img
             src={previewUrl} alt="Postcard preview"
             className="max-h-full w-full rounded-lg object-contain shadow-2xl shadow-black/60"
           />
-        ) : (
+        )}
+
+        {/* Canvas — live during crop, hidden otherwise */}
+        <canvas
+          ref={canvasRef}
+          className="rounded-lg shadow-2xl shadow-black/60"
+          style={{
+            display: cropMode ? "block" : "none",
+            maxHeight: "100%",
+            width: "100%",
+            objectFit: "contain",
+          }}
+        />
+
+        {!previewUrl && !cropMode && (
           <div className="h-48 w-full animate-pulse rounded-lg" style={{ backgroundColor: "rgba(255,255,255,0.06)" }} />
         )}
 
         {cropMode && (
           <div
             className="absolute inset-4 rounded-lg"
-            style={{ cursor: dragRef.current ? "grabbing" : "grab", touchAction: "none" }}
+            style={{ cursor: "grab", touchAction: "none" }}
             onPointerDown={handlePointerDown}
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}
@@ -506,8 +574,6 @@ export default function PostcardEditor({ photo, onClose, onSaveToLibrary }) {
             style={{ background: "rgba(0,0,0,0.55)", color: "rgba(255,255,255,0.7)", backdropFilter: "blur(8px)" }}
           >drag to pan · scroll to zoom · {scaleLabel}</div>
         )}
-
-        <canvas ref={canvasRef} className="hidden" />
       </div>
 
       {/* Controls */}
@@ -544,7 +610,7 @@ export default function PostcardEditor({ photo, onClose, onSaveToLibrary }) {
               >Wrong building?</button>
               <button
                 type="button"
-                onClick={() => setCropMode(true)}
+                onClick={() => { renderLiveToCanvas(transformRef.current); setCropMode(true); }}
                 className="rounded-full border px-3 py-1.5 text-xs font-semibold transition active:scale-95"
                 style={{ borderColor: "rgba(255,255,255,0.18)", color: "rgba(255,255,255,0.55)", backgroundColor: "rgba(255,255,255,0.07)" }}
               >Crop</button>
