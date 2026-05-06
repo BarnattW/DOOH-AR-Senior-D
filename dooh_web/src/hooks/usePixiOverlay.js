@@ -6,6 +6,7 @@ export function usePixiOverlay({ canvasRef: containerRef, videoRef, isRunning, l
   const appRef = useRef(null);
   const filterCacheRef = useRef({});
   const preloadCacheRef = useRef({});
+  const renderCacheRef = useRef({});
 
   useEffect(() => {
     if (!isRunning || !containerRef.current || !videoRef.current) return;
@@ -48,6 +49,7 @@ export function usePixiOverlay({ canvasRef: containerRef, videoRef, isRunning, l
       appRef.current = app;
       container.__pixiApp = app;
       filterCacheRef.current = {};
+      renderCacheRef.current = {};
 
       container.appendChild(app.view);
 
@@ -89,6 +91,14 @@ export function usePixiOverlay({ canvasRef: containerRef, videoRef, isRunning, l
       pointLight.position.set(1, 1.5, 3);
 
       PIXI3D.LightingEnvironment.main.lights.push(dirLight, pointLight);
+
+      const occlusionMaskGfx = new PIXI.Graphics();
+      const foregroundSprite = new PIXI.Sprite(videoTex);
+      foregroundSprite.width = width;
+      foregroundSprite.height = height;
+      foregroundSprite.mask = occlusionMaskGfx;
+      app.stage.addChild(occlusionMaskGfx);
+      app.stage.addChild(foregroundSprite);
 
       const decorGfx = new PIXI.Graphics();
       app.stage.addChild(decorGfx);
@@ -172,6 +182,7 @@ export function usePixiOverlay({ canvasRef: containerRef, videoRef, isRunning, l
         }
 
         maskGfx.clear();
+        occlusionMaskGfx.clear();
         if (smoothBox) {
           const { x1, y1, x2, y2 } = smoothBox;
           maskGfx.beginFill(0xffffff);
@@ -179,15 +190,27 @@ export function usePixiOverlay({ canvasRef: containerRef, videoRef, isRunning, l
           maskGfx.endFill();
         }
 
+        const renderDetections = smoothBox && detections.length > 0
+          ? [{ ...detections[0], box: { ...smoothBox } }, ...detections.slice(1)]
+          : [];
+
         scene3d.removeChildren();
-        if (filter.draw3d && detections.length > 0) {
-          filter.draw3d(scene3d, detections, time, app.screen);
+        const renderContext = filter?.id
+          ? (renderCacheRef.current[filter.id] ??= { objects: new Map() })
+          : null;
+
+        if (filter.draw3d && renderDetections.length > 0) {
+          filter.draw3d(scene3d, renderDetections, time, app.screen, renderContext);
+        }
+
+        if (filter.drawOcclusion && renderDetections.length > 0) {
+          filter.drawOcclusion(occlusionMaskGfx, renderDetections, time, app.screen, renderContext);
         }
 
         decorGfx.clear();
         textContainer.removeChildren();
-        if (filter.draw && detections.length > 0) {
-          filter.draw(decorGfx, textContainer, detections, time, app.screen);
+        if (filter.draw && renderDetections.length > 0) {
+          filter.draw(decorGfx, textContainer, renderDetections, time, app.screen, renderContext);
         }
       });
     }
@@ -200,6 +223,16 @@ export function usePixiOverlay({ canvasRef: containerRef, videoRef, isRunning, l
 
     return () => {
       cancelled = true;
+      Object.values(renderCacheRef.current).forEach((cache) => {
+        cache.objects?.forEach((object) => {
+          if (object?.objects instanceof Map) {
+            object.objects.forEach((childObject) => childObject?.destroy?.({ children: true }));
+          } else {
+            object?.destroy?.({ children: true });
+          }
+        });
+      });
+      renderCacheRef.current = {};
       if (PIXI3D.LightingEnvironment.main) {
         PIXI3D.LightingEnvironment.main.lights = PIXI3D.LightingEnvironment.main.lights.filter(
           (light) => light !== dirLight && light !== pointLight

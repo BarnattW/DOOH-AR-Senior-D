@@ -1,5 +1,10 @@
 import * as PIXI from 'pixi.js';
 import { SimplePlane } from '@pixi/mesh-extras';
+import {
+  anchorPoint,
+  getBoxMetrics,
+  getCachedObject,
+} from './arUtils';
 
 export const id = 'moving-american-flag';
 export const label = 'Moving American Flag';
@@ -9,6 +14,7 @@ const FLAG_OFFSET_X_FACTOR = 0.45;
 const FLAG_OFFSET_Y_FACTOR = 0.1;
 const FLAG_VERTICES_X = 16;
 const FLAG_VERTICES_Y = 6;
+const FLAG_POLE_ANCHOR = { x: 1 + FLAG_OFFSET_X_FACTOR, y: 0.05 };
 
 let flagTexture = null;
 
@@ -18,10 +24,14 @@ export async function preload() {
   }
 }
 
-function drawTexturedFlag(textContainer, poleX, poleTopY, flagWidth, flagHeight, time) {
+function drawTexturedFlag(textContainer, poleX, poleTopY, flagWidth, flagHeight, time, context) {
   if (!flagTexture) return;
 
-  const flag = new SimplePlane(flagTexture, FLAG_VERTICES_X, FLAG_VERTICES_Y);
+  const flag = getCachedObject(
+    context,
+    'flag-plane',
+    () => new SimplePlane(flagTexture, FLAG_VERTICES_X, FLAG_VERTICES_Y)
+  );
   flag.position.set(poleX, poleTopY + flagHeight);
   flag.scale.set(flagWidth / flagTexture.width, -flagHeight / flagTexture.height);
 
@@ -45,42 +55,39 @@ function drawTexturedFlag(textContainer, poleX, poleTopY, flagWidth, flagHeight,
   textContainer.addChild(flag);
 }
 
-export function draw(gfx, textContainer, detections, time) {
-  const det = detections[0];
-  const { x1, y1, x2, y2 } = det.box;
-  const cx = (x1 + x2) / 2;
-  const w = x2 - x1;
-  const h = y2 - y1;
-  const boxMin = Math.max(1, Math.min(w, h));
+export function draw(gfx, textContainer, detections, time, screen, context) {
+  const metrics = getBoxMetrics(detections);
+  if (!metrics) return;
 
-  gfx.lineStyle(Math.max(2, Math.min(w, h) * 0.012), 0xffffff, 1);
-  gfx.drawRoundedRect(x1, y1, w, h, Math.max(8, Math.min(w, h) * 0.05));
+  gfx.lineStyle(Math.max(2, metrics.minSize * 0.012), 0xffffff, 1);
+  gfx.drawRoundedRect(metrics.x1, metrics.y1, metrics.width, metrics.height, Math.max(8, metrics.minSize * 0.05));
 
-  const poleX = x2 + w * FLAG_OFFSET_X_FACTOR;
-  const poleTopY = y1 + h * 0.05;
-  const poleBottomY = y2 + h * 0.35;
-  const flagWidth = Math.max(88, w * 0.9);
-  const flagHeight = Math.max(52, h * 0.5);
+  const poleTop = anchorPoint(metrics, FLAG_POLE_ANCHOR);
+  const poleX = poleTop.x;
+  const poleTopY = poleTop.y;
+  const poleBottomY = metrics.y2 + metrics.height * 0.35;
+  const flagWidth = Math.max(88, metrics.width * 0.9);
+  const flagHeight = Math.max(52, metrics.height * 0.5);
 
-  gfx.lineStyle(Math.max(4, boxMin * 0.03), 0xd0d7e2, 1);
-  gfx.moveTo(poleX, poleTopY - h * FLAG_OFFSET_Y_FACTOR);
+  gfx.lineStyle(Math.max(4, metrics.minSize * 0.03), 0xd0d7e2, 1);
+  gfx.moveTo(poleX, poleTopY - metrics.height * FLAG_OFFSET_Y_FACTOR);
   gfx.lineTo(poleX, poleBottomY);
-  drawTexturedFlag(textContainer, poleX, poleTopY, flagWidth, flagHeight, time);
+  drawTexturedFlag(textContainer, poleX, poleTopY, flagWidth, flagHeight, time, context);
 
-  const title = new PIXI.Text('AMERICAN FLAG', new PIXI.TextStyle({
-    fontFamily: 'Arial',
-    fontWeight: 'bold',
-    fontSize: Math.min(24, Math.max(14, h * 0.14)),
-    fill: 0xffffff,
-    stroke: 0x1f3c88,
-    strokeThickness: 4,
-    dropShadow: true,
-    dropShadowColor: 0x000000,
-    dropShadowBlur: 4,
-    dropShadowDistance: 2,
-    letterSpacing: 1,
-  }));
+  const title = getCachedObject(context, 'flag-title', () => new PIXI.Text('AMERICAN FLAG', new PIXI.TextStyle({
+      fontFamily: 'Arial',
+      fontWeight: 'bold',
+      fill: 0xffffff,
+      stroke: 0x1f3c88,
+      strokeThickness: 4,
+      dropShadow: true,
+      dropShadowColor: 0x000000,
+      dropShadowBlur: 4,
+      dropShadowDistance: 2,
+      letterSpacing: 1,
+    })));
+  title.style.fontSize = Math.min(24, Math.max(14, metrics.height * 0.14));
   title.anchor.set(0.5, 1);
-  title.position.set(cx, y1 - 8);
+  title.position.set(metrics.centerX, metrics.y1 - 8);
   textContainer.addChild(title);
 }
