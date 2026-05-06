@@ -78,15 +78,15 @@ export function usePixiOverlay({ canvasRef: containerRef, videoRef, isRunning, l
 
       dirLight = new PIXI3D.Light();
       dirLight.type = PIXI3D.LightType.directional;
-      dirLight.intensity = 0.7;
+      dirLight.intensity = 1.05;
       dirLight.position.set(-4, 7, -4);
       dirLight.rotationQuaternion.setEulerAngles(45, 45, 0);
 
       pointLight = new PIXI3D.Light();
       pointLight.type = PIXI3D.LightType.point;
-      pointLight.intensity = 12;
+      pointLight.intensity = 18;
       pointLight.range = 40;
-      pointLight.position.set(1, 0, 3);
+      pointLight.position.set(1, 1.5, 3);
 
       PIXI3D.LightingEnvironment.main.lights.push(dirLight, pointLight);
 

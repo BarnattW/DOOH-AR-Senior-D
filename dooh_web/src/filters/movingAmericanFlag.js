@@ -1,10 +1,49 @@
 import * as PIXI from 'pixi.js';
+import { SimplePlane } from '@pixi/mesh-extras';
 
 export const id = 'moving-american-flag';
 export const label = 'Moving American Flag';
 
+const FLAG_TEXTURE_PATH = '/assets/moving_american_flag/textures/PlaneShape_baseColor.png';
 const FLAG_OFFSET_X_FACTOR = 0.45;
 const FLAG_OFFSET_Y_FACTOR = 0.1;
+const FLAG_VERTICES_X = 16;
+const FLAG_VERTICES_Y = 6;
+
+let flagTexture = null;
+
+export async function preload() {
+  if (!flagTexture) {
+    flagTexture = await PIXI.Assets.load(FLAG_TEXTURE_PATH);
+  }
+}
+
+function drawTexturedFlag(textContainer, poleX, poleTopY, flagWidth, flagHeight, time) {
+  if (!flagTexture) return;
+
+  const flag = new SimplePlane(flagTexture, FLAG_VERTICES_X, FLAG_VERTICES_Y);
+  flag.position.set(poleX, poleTopY + flagHeight);
+  flag.scale.set(flagWidth / flagTexture.width, -flagHeight / flagTexture.height);
+
+  const vertexBuffer = flag.geometry.getBuffer('aVertexPosition');
+  const vertices = vertexBuffer.data;
+  const waveSize = flagTexture.height * 0.04;
+
+  for (let row = 0; row < FLAG_VERTICES_Y; row++) {
+    for (let col = 0; col < FLAG_VERTICES_X; col++) {
+      const index = (row * FLAG_VERTICES_X + col) * 2;
+      const x = (col / (FLAG_VERTICES_X - 1)) * flagTexture.width;
+      const y = (row / (FLAG_VERTICES_Y - 1)) * flagTexture.height;
+      const waveStrength = col / (FLAG_VERTICES_X - 1);
+
+      vertices[index] = x;
+      vertices[index + 1] = y + Math.sin(time * 4 + col * 0.7 + row * 0.25) * waveSize * waveStrength;
+    }
+  }
+
+  vertexBuffer.update();
+  textContainer.addChild(flag);
+}
 
 export function draw(gfx, textContainer, detections, time) {
   const det = detections[0];
@@ -22,62 +61,11 @@ export function draw(gfx, textContainer, detections, time) {
   const poleBottomY = y2 + h * 0.35;
   const flagWidth = Math.max(88, w * 0.9);
   const flagHeight = Math.max(52, h * 0.5);
-  const stripeHeight = flagHeight / 13;
-  const wave = Math.sin(time * 3.2) * flagHeight * 0.06;
 
   gfx.lineStyle(Math.max(4, boxMin * 0.03), 0xd0d7e2, 1);
   gfx.moveTo(poleX, poleTopY - h * FLAG_OFFSET_Y_FACTOR);
   gfx.lineTo(poleX, poleBottomY);
-
-  for (let stripe = 0; stripe < 13; stripe++) {
-    const yBase = poleTopY + stripe * stripeHeight;
-    const color = stripe % 2 === 0 ? 0xbf0a30 : 0xffffff;
-    gfx.beginFill(color, 0.95);
-    gfx.moveTo(poleX, yBase);
-    for (let step = 1; step <= 8; step++) {
-      const t = step / 8;
-      const x = poleX + flagWidth * t;
-      const y = yBase + Math.sin(time * 4 + t * 3.6) * wave * (0.4 + t);
-      gfx.lineTo(x, y);
-    }
-    for (let step = 8; step >= 0; step--) {
-      const t = step / 8;
-      const x = poleX + flagWidth * t;
-      const y = yBase + stripeHeight + Math.sin(time * 4 + t * 3.6) * wave * (0.4 + t);
-      gfx.lineTo(x, y);
-    }
-    gfx.closePath();
-    gfx.endFill();
-  }
-
-  const cantonWidth = flagWidth * 0.42;
-  const cantonHeight = stripeHeight * 7;
-  gfx.beginFill(0x002868, 0.98);
-  gfx.moveTo(poleX, poleTopY);
-  for (let step = 1; step <= 8; step++) {
-    const t = step / 8;
-    const x = poleX + cantonWidth * t;
-    const y = poleTopY + Math.sin(time * 4 + t * 3.6) * wave * (0.4 + t);
-    gfx.lineTo(x, y);
-  }
-  for (let step = 8; step >= 0; step--) {
-    const t = step / 8;
-    const x = poleX + cantonWidth * t;
-    const y = poleTopY + cantonHeight + Math.sin(time * 4 + t * 3.6) * wave * (0.4 + t);
-    gfx.lineTo(x, y);
-  }
-  gfx.closePath();
-  gfx.endFill();
-
-  for (let row = 0; row < 5; row++) {
-    for (let col = 0; col < 6; col++) {
-      const starX = poleX + cantonWidth * (0.12 + col * 0.14) + row * 2;
-      const starY = poleTopY + cantonHeight * (0.14 + row * 0.18);
-      gfx.beginFill(0xffffff, 0.95);
-      gfx.drawCircle(starX, starY, Math.max(1.8, boxMin * 0.012));
-      gfx.endFill();
-    }
-  }
+  drawTexturedFlag(textContainer, poleX, poleTopY, flagWidth, flagHeight, time);
 
   const title = new PIXI.Text('AMERICAN FLAG', new PIXI.TextStyle({
     fontFamily: 'Arial',
