@@ -35,7 +35,7 @@ export default function CameraControls({
           </button>
 
           {/* Shutter */}
-          <div className="flex flex-col items-center">
+          <div className="relative">
             <button
               onClick={onCapture}
               aria-label="Take photo"
@@ -43,7 +43,7 @@ export default function CameraControls({
             >
               <span className="block h-[54px] w-[54px] rounded-full bg-white" />
             </button>
-            <div className="mt-2 rounded-full border border-white/10 bg-black/30 px-3 py-1 text-[11px] font-medium tabular-nums tracking-[0.2em] text-white/70 backdrop-blur-md">
+            <div className="absolute left-1/2 top-full mt-2 -translate-x-1/2 whitespace-nowrap rounded-full border border-white/10 bg-black/30 px-3 py-1 text-[11px] font-medium tabular-nums tracking-[0.2em] text-white/70 backdrop-blur-md">
               {zoomSteps[currentStepIndex].toFixed(zoomSteps[currentStepIndex] % 1 === 0 ? 0 : 1)}X
             </div>
           </div>
