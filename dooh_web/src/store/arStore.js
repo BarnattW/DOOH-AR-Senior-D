@@ -1,6 +1,6 @@
 import { create } from "zustand";
 
-const GLITCH_MS = 3000;
+const GLITCH_MS = 5000;
 const LOST_MS = 2000;   // tracking → lost after 2s without a positive detection
 const RESET_MS = 8000;  // lost → idle after 8s (long grace period before full reset)
 
