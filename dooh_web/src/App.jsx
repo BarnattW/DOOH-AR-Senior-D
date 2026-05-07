@@ -16,6 +16,7 @@ import PhotoLibrary from "./components/PhotoLibrary";
 import PostcardEditor from "./components/PostcardEditor";
 import StartPanel from "./components/StartPanel";
 import LockOnOverlay from "./components/LockOnOverlay";
+import HelpButton from "./components/HelpButton";
 import TutorialFlow from "./components/onboarding/TutorialFlow";
 import ModelToggle from "./components/ModelToggle";
 import DebugOverlay from "./components/DebugOverlay";
@@ -186,6 +187,8 @@ export default function App() {
           <DetectionOverlay detections={detections} containerRef={pixiCanvasRef} />
 
           {isRunning && <LockOnOverlay arState={arState} />}
+
+          {isRunning && <HelpButton />}
 
           {/* Optional debug overlay (?debug=1) */}
           <DebugOverlay statsRef={statsRef} model={detectionMode} sessionUrl={session?.url} />
