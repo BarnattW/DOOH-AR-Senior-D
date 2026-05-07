@@ -21,6 +21,21 @@ const TEMPLATES = [
 const W = 1200;
 const H = 800;
 
+// Postcard canvas design tokens — shared across all three layouts
+const PC = {
+  bg:        "#0d0d0d",   // true near-black paper
+  primary:   "#e8e8e8",   // building name — clean white
+  sub:       "#686868",   // city, date, coords
+  label:     "#383838",   // section labels (M E S S A G E, A D D R E S S, field labels)
+  caption:   "#4a4a4a",   // "— POSTCARD —", "GREETINGS FROM", footers
+  ruleSep:   "#242424",   // section separator rules
+  ruleLine:  "#1a1a1a",   // message writing lines
+  divider:   "#202020",   // vertical divider
+  to:        "#888888",   // TO: label
+  fieldRule: "#242424",   // address field underlines
+  decorBig:  "#585858",   // large "NEW YORK" decorative
+};
+
 let _fontsReady = null;
 function ensureFonts() {
   if (_fontsReady) return _fontsReady;
@@ -130,14 +145,14 @@ function drawPostmark(ctx, cx, cy, r, date) {
 }
 
 // ── Shared back-panel renderer (used by Classic Split) ───────────────────────
-function drawBackPanel(ctx, panelX, panelW, building, date, filterLabel, bgColor = "#fdf9f3") {
-  ctx.fillStyle = bgColor;
+function drawBackPanel(ctx, panelX, panelW, building, date) {
+  ctx.fillStyle = PC.bg;
   ctx.fillRect(panelX, 0, panelW, H);
 
-  const pad  = 24;
-  const stW  = 64, stH = 80;
-  const stX  = panelX + panelW - pad - stW;
-  const stY  = 20;
+  const pad = 24;
+  const stW = 64, stH = 80;
+  const stX = panelX + panelW - pad - stW;
+  const stY = 20;
   const pmCX = panelX + pad + 34;
   const pmCY = stY + stH / 2;
 
@@ -145,81 +160,78 @@ function drawBackPanel(ctx, panelX, panelW, building, date, filterLabel, bgColor
   drawPostmark(ctx, pmCX, pmCY, 28, date);
 
   ctx.font = "600 8px DM Sans, sans-serif";
-  ctx.fillStyle = "#c0b4a8"; ctx.textAlign = "center";
+  ctx.fillStyle = PC.caption; ctx.textAlign = "center";
   ctx.fillText("— POSTCARD —", panelX + panelW / 2, pmCY + 4);
 
   const ruleY = stY + stH + 14;
-  hRule(ctx, panelX + pad, ruleY, panelW - pad * 2);
+  hRule(ctx, panelX + pad, ruleY, panelW - pad * 2, PC.ruleSep);
 
   const colPad = panelX + pad;
   const divX   = panelX + panelW * 0.52;
   const colW   = divX - colPad - 14;
 
   // ── Left column ───────────────────────────────────────────────────────────
-  let ty = ruleY + 38;
+  let ty = ruleY + 32;
 
   if (building) {
     const bFont = "800 24px Syne, sans-serif";
     const bLines = getWrappedLines(ctx, building, bFont, colW);
-    ctx.font = bFont; ctx.fillStyle = "#2a2420"; ctx.textAlign = "left";
+    ctx.font = bFont; ctx.fillStyle = PC.primary; ctx.textAlign = "left";
     for (const l of bLines) { ctx.fillText(l, colPad, ty); ty += 30; }
     ty += 6;
   }
 
   ctx.font = "500 11px DM Sans, sans-serif";
-  ctx.fillStyle = "#b0a090"; ctx.textAlign = "left";
+  ctx.fillStyle = PC.sub; ctx.textAlign = "left";
   ctx.fillText("New York City, NY", colPad, ty); ty += 18;
   ctx.fillText(
     date.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }).toUpperCase(),
     colPad, ty
-  ); ty += 14;
+  ); ty += 18;
 
-  if (filterLabel) {
-    ctx.font = "400 15px Caveat, cursive";
-    ctx.fillStyle = "rgba(175,50,30,0.65)";
-    ctx.fillText("✶  " + filterLabel + " filter", colPad, ty + 14);
-    ty += 28;
-  }
-
-  ty += 16;
-  hRule(ctx, colPad, ty, colW, "#e4dcd4");
-  ty += 16;
+  hRule(ctx, colPad, ty, colW, PC.ruleSep);
+  ty += 14;
 
   ctx.font = "500 9px DM Sans, sans-serif";
-  ctx.fillStyle = "#c0b8ae"; ctx.textAlign = "left";
+  ctx.fillStyle = PC.sub; ctx.textAlign = "left";
   ctx.fillText("40°44′N  73°59′W  ·  NEW YORK CITY", colPad, ty);
-  ty += 22;
+  ty += 20;
 
-  hRule(ctx, colPad, ty, colW, "#e4dcd4");
-  ty += 18;
+  hRule(ctx, colPad, ty, colW, PC.ruleSep);
+  ty += 16;
 
   ctx.font = "600 8px DM Sans, sans-serif";
-  ctx.fillStyle = "#b8b0a8"; ctx.textAlign = "left";
+  ctx.fillStyle = PC.label; ctx.textAlign = "left";
   ctx.fillText("M E S S A G E", colPad, ty);
   ty += 16;
 
-  for (let i = 0; i < 9; i++) {
-    hRule(ctx, colPad, ty + i * 34, colW, "#ddd5cc");
-  }
-  ty += 8 * 34 + 24;
+  // Anchor decorative bottom at fixed positions so nothing overlaps
+  const greetRuleY  = H - 98;
+  const greetLabelY = H - 74;
+  const nyLabelY    = H - 46;
 
-  hRule(ctx, colPad, ty, colW, "#e4dcd4");
-  ty += 22;
+  const lineSpacing = 34;
+  const numLines = Math.min(Math.max(0, Math.floor((greetRuleY - 10 - ty) / lineSpacing)), 10);
+  for (let i = 0; i < numLines; i++) {
+    hRule(ctx, colPad, ty + i * lineSpacing, colW, PC.ruleLine);
+  }
+
+  hRule(ctx, colPad, greetRuleY, colW, PC.ruleSep);
 
   ctx.font = "600 8px DM Sans, sans-serif";
-  ctx.fillStyle = "#c8c0b4"; ctx.textAlign = "left";
-  ctx.fillText("G R E E T I N G S  F R O M", colPad, ty);
-  ty += 24;
+  ctx.fillStyle = PC.caption; ctx.textAlign = "left";
+  ctx.fillText("G R E E T I N G S  F R O M", colPad, greetLabelY);
+
   ctx.font = "800 26px Syne, sans-serif";
-  ctx.fillStyle = "#d4ccc4";
-  ctx.fillText("NEW YORK", colPad, ty);
+  ctx.fillStyle = PC.decorBig;
+  ctx.fillText("NEW YORK", colPad, nyLabelY);
 
   ctx.font = "500 8px DM Sans, sans-serif";
-  ctx.fillStyle = "#c8c0b8"; ctx.textAlign = "left";
+  ctx.fillStyle = PC.caption; ctx.textAlign = "left";
   ctx.fillText("DOOH AR  ·  NYC  ·  " + date.getFullYear(), colPad, H - 22);
 
   // ── Vertical divider ──────────────────────────────────────────────────────
-  vRule(ctx, divX, ruleY + 14, H - 20);
+  vRule(ctx, divX, ruleY + 14, H - 20, PC.divider);
 
   // ── Right column: address ─────────────────────────────────────────────────
   const rightX = divX + 14;
@@ -227,31 +239,31 @@ function drawBackPanel(ctx, panelX, panelW, building, date, filterLabel, bgColor
   let ry = ruleY + 30;
 
   ctx.font = "600 8px DM Sans, sans-serif";
-  ctx.fillStyle = "#c0b4a8"; ctx.textAlign = "left";
+  ctx.fillStyle = PC.label; ctx.textAlign = "left";
   ctx.fillText("A D D R E S S", rightX, ry);
   ry += 22;
 
   ctx.font = "700 10px DM Sans, sans-serif";
-  ctx.fillStyle = "#a09088";
+  ctx.fillStyle = PC.to;
   ctx.fillText("TO :", rightX, ry);
   ry += 30;
 
   const fields = ["NAME", "STREET", "CITY", "STATE / ZIP"];
   for (const field of fields) {
     ctx.font = "500 7px DM Sans, sans-serif";
-    ctx.fillStyle = "#c8bcb0"; ctx.textAlign = "left";
+    ctx.fillStyle = PC.label; ctx.textAlign = "left";
     ctx.fillText(field, rightX, ry - 4);
-    hRule(ctx, rightX, ry, rightW, "#d0c8c0");
-    ry += 52;
+    hRule(ctx, rightX, ry, rightW, PC.fieldRule);
+    ry += 56;
   }
 
   ctx.font = "600 9px DM Sans, sans-serif";
-  ctx.fillStyle = "#c8bca8"; ctx.textAlign = "center";
+  ctx.fillStyle = PC.caption; ctx.textAlign = "center";
   ctx.fillText("NEW YORK, NY 10001", divX + (panelX + panelW - divX) / 2, H - 22);
 }
 
 // ── Template A: Classic Split ─────────────────────────────────────────────────
-function drawSplit(ctx, img, building, date, transform, filterLabel) {
+function drawSplit(ctx, img, building, date, transform) {
   const splitX = 696;
   drawCoverCropped(ctx, img, 0, 0, splitX, H, transform);
 
@@ -266,14 +278,14 @@ function drawSplit(ctx, img, building, date, transform, filterLabel) {
     ctx.shadowBlur = 0;
   }
 
-  ctx.strokeStyle = "#e0d8cc"; ctx.lineWidth = 1;
+  ctx.strokeStyle = PC.ruleSep; ctx.lineWidth = 1;
   ctx.beginPath(); ctx.moveTo(splitX, 0); ctx.lineTo(splitX, H); ctx.stroke();
 
-  drawBackPanel(ctx, splitX, W - splitX, building, date, filterLabel, "#fdf9f3");
+  drawBackPanel(ctx, splitX, W - splitX, building, date);
 }
 
 // ── Template B: Strip ─────────────────────────────────────────────────────────
-function drawStrip(ctx, img, building, date, transform, filterLabel) {
+function drawStrip(ctx, img, building, date, transform) {
   const photoH = 520;
   drawCoverCropped(ctx, img, 0, 0, W, photoH, transform);
 
@@ -288,7 +300,7 @@ function drawStrip(ctx, img, building, date, transform, filterLabel) {
     ctx.shadowBlur = 0;
   }
 
-  ctx.strokeStyle = "#e0d8cc"; ctx.lineWidth = 1;
+  ctx.strokeStyle = PC.ruleSep; ctx.lineWidth = 1;
   ctx.beginPath(); ctx.moveTo(0, photoH); ctx.lineTo(W, photoH); ctx.stroke();
 
   const pad  = 24;
@@ -298,161 +310,187 @@ function drawStrip(ctx, img, building, date, transform, filterLabel) {
   const pmCX = pad + 34;
   const pmCY = stY + stH / 2;
 
-  ctx.fillStyle = "#fdf9f3"; ctx.fillRect(0, photoH, W, H - photoH);
+  ctx.fillStyle = PC.bg; ctx.fillRect(0, photoH, W, H - photoH);
   drawStamp(ctx, stX, stY, stW, stH);
   drawPostmark(ctx, pmCX, pmCY, 26, date);
 
   ctx.font = "600 8px DM Sans, sans-serif";
-  ctx.fillStyle = "#c0b4a8"; ctx.textAlign = "center";
+  ctx.fillStyle = PC.caption; ctx.textAlign = "center";
   ctx.fillText("— POSTCARD —", W / 2, pmCY + 4);
 
   const ruleY = stY + stH + 10;
-  hRule(ctx, pad, ruleY, W - pad * 2);
+  hRule(ctx, pad, ruleY, W - pad * 2, PC.ruleSep);
 
   const divX   = W * 0.52;
   const colPad = pad;
   const colW   = divX - colPad - 12;
-  let ty = ruleY + 32;
+  let ty = ruleY + 28;
 
   if (building) {
     const bFont = "800 20px Syne, sans-serif";
     const bLines = getWrappedLines(ctx, building, bFont, colW);
-    ctx.font = bFont; ctx.fillStyle = "#2a2420"; ctx.textAlign = "left";
+    ctx.font = bFont; ctx.fillStyle = PC.primary; ctx.textAlign = "left";
     for (const l of bLines) { ctx.fillText(l, colPad, ty); ty += 26; }
     ty += 4;
   }
 
   ctx.font = "500 10px DM Sans, sans-serif";
-  ctx.fillStyle = "#b0a090"; ctx.textAlign = "left";
+  ctx.fillStyle = PC.sub; ctx.textAlign = "left";
   ctx.fillText(
     "New York City, NY  ·  " +
     date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }).toUpperCase(),
     colPad, ty
   ); ty += 16;
 
-  if (filterLabel) {
-    ctx.font = "400 14px Caveat, cursive";
-    ctx.fillStyle = "rgba(175,50,30,0.65)";
-    ctx.fillText("✶  " + filterLabel + " filter", colPad, ty + 10);
-    ty += 22;
-  }
-
-  ty += 10;
-  hRule(ctx, colPad, ty, colW, "#e4dcd4");
+  hRule(ctx, colPad, ty, colW, PC.ruleSep);
   ty += 14;
 
   ctx.font = "500 9px DM Sans, sans-serif";
-  ctx.fillStyle = "#c0b8ae";
+  ctx.fillStyle = PC.sub;
   ctx.fillText("40°44′N  73°59′W  ·  NEW YORK CITY", colPad, ty);
   ty += 18;
 
-  hRule(ctx, colPad, ty, colW, "#e4dcd4");
+  hRule(ctx, colPad, ty, colW, PC.ruleSep);
   ty += 14;
 
   ctx.font = "600 8px DM Sans, sans-serif";
-  ctx.fillStyle = "#b8b0a8";
+  ctx.fillStyle = PC.label;
   ctx.fillText("M E S S A G E", colPad, ty);
   ty += 14;
 
-  const linesAvail = Math.floor((H - 18 - ty) / 28);
-  for (let i = 0; i < Math.min(linesAvail, 3); i++) {
-    hRule(ctx, colPad, ty + i * 28, colW, "#ddd5cc");
+  const msgBottom = H - 20;
+  const lineSpacing = 30;
+  const numMsgLines = Math.min(Math.max(0, Math.floor((msgBottom - ty) / lineSpacing)), 5);
+  for (let i = 0; i < numMsgLines; i++) {
+    hRule(ctx, colPad, ty + i * lineSpacing, colW, PC.ruleLine);
   }
 
   // Right column
   const rightX = divX + 14;
   const rightW = W - rightX - pad;
-  let ry = ruleY + 28;
+  let ry = ruleY + 22;
+
+  ctx.font = "600 8px DM Sans, sans-serif";
+  ctx.fillStyle = PC.label; ctx.textAlign = "left";
+  ctx.fillText("A D D R E S S", rightX, ry);
+  ry += 20;
 
   ctx.font = "700 10px DM Sans, sans-serif";
-  ctx.fillStyle = "#a09088"; ctx.textAlign = "left";
-  ctx.fillText("TO :", rightX, ry); ry += 28;
+  ctx.fillStyle = PC.to;
+  ctx.fillText("TO :", rightX, ry); ry += 26;
 
   const stripFields = ["NAME", "STREET", "CITY / STATE / ZIP"];
   for (const field of stripFields) {
     ctx.font = "500 7px DM Sans, sans-serif";
-    ctx.fillStyle = "#c8bcb0";
+    ctx.fillStyle = PC.label;
     ctx.fillText(field, rightX, ry - 4);
-    hRule(ctx, rightX, ry, rightW, "#d0c8c0");
-    ry += 38;
+    hRule(ctx, rightX, ry, rightW, PC.fieldRule);
+    ry += 40;
   }
 
   ctx.font = "600 9px DM Sans, sans-serif";
-  ctx.fillStyle = "#c8bca8"; ctx.textAlign = "center";
+  ctx.fillStyle = PC.caption; ctx.textAlign = "center";
   ctx.fillText("NEW YORK, NY 10001", divX + (W - divX) / 2, H - 18);
 }
 
 // ── Template C: Border ────────────────────────────────────────────────────────
-function drawBorder(ctx, img, building, date, transform, filterLabel) {
+function drawBorder(ctx, img, building, date, transform) {
   const framePad = 24;
-  const backH    = 180;
+  const backH    = 240;
   const photoX   = framePad;
   const photoY   = framePad;
   const photoW   = W - framePad * 2;
   const photoH   = H - framePad - backH;
+  const backY    = photoY + photoH;
 
-  ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = PC.bg; ctx.fillRect(0, 0, W, H);
   drawCoverCropped(ctx, img, photoX, photoY, photoW, photoH, transform);
 
-  hRule(ctx, framePad, photoY + photoH + 1, photoW, "#e8e0d8");
+  hRule(ctx, framePad, backY + 1, photoW, PC.ruleSep);
 
-  const pad   = 20;
-  const stW   = 60, stH = 66;
-  const stX   = W - framePad - pad - stW;
-  const stY   = photoY + photoH + 18;
-  const pmCX  = framePad + pad + 30;
-  const pmCY  = stY + stH / 2;
+  const pad  = 20;
+  const stW  = 62, stH = 72;
+  const stX  = W - framePad - pad - stW;
+  const stY  = backY + 16;
+  const pmCX = framePad + pad + 30;
+  const pmCY = stY + stH / 2;
 
   drawStamp(ctx, stX, stY, stW, stH);
   drawPostmark(ctx, pmCX, pmCY, 24, date);
 
   ctx.font = "600 8px DM Sans, sans-serif";
-  ctx.fillStyle = "#c0b4a8"; ctx.textAlign = "center";
+  ctx.fillStyle = PC.caption; ctx.textAlign = "center";
   ctx.fillText("— POSTCARD —", W / 2, pmCY + 4);
 
   const divX   = W * 0.52;
   const colPad = framePad + pad;
   const colW   = divX - colPad - 12;
-  let ty = stY + 24;
+
+  // Left column
+  let ty = backY + 22;
 
   if (building) {
-    const bFont = "800 19px Syne, sans-serif";
+    const bFont = "800 20px Syne, sans-serif";
     const bLines = getWrappedLines(ctx, building, bFont, colW);
-    ctx.font = bFont; ctx.fillStyle = "#1a1a1a"; ctx.textAlign = "left";
+    ctx.font = bFont; ctx.fillStyle = PC.primary; ctx.textAlign = "left";
     for (const l of bLines) { ctx.fillText(l, colPad, ty); ty += 26; }
     ty += 4;
   }
 
   const datePart = date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }).toUpperCase();
-  const filterPart = filterLabel ? "  ·  " + filterLabel : "";
   ctx.font = "500 10px DM Sans, sans-serif";
-  ctx.fillStyle = "#b0a090"; ctx.textAlign = "left";
-  ctx.fillText("New York City, NY  ·  " + datePart + filterPart, colPad, ty);
+  ctx.fillStyle = PC.sub; ctx.textAlign = "left";
+  ctx.fillText("New York City, NY  ·  " + datePart, colPad, ty);
   ty += 16;
 
   ctx.font = "500 9px DM Sans, sans-serif";
-  ctx.fillStyle = "#c0b8ae";
+  ctx.fillStyle = PC.sub;
   ctx.fillText("40°44′N  73°59′W", colPad, ty);
+  ty += 20;
 
-  vRule(ctx, divX, photoY + photoH + 14, H - framePad + 4, "#e8e0d8");
+  hRule(ctx, colPad, ty, colW, PC.ruleSep);
+  ty += 14;
 
-  // Right column
+  ctx.font = "600 8px DM Sans, sans-serif";
+  ctx.fillStyle = PC.label; ctx.textAlign = "left";
+  ctx.fillText("M E S S A G E", colPad, ty);
+  ty += 14;
+
+  const msgBottom = H - framePad - 8;
+  const lineSpacing = 30;
+  const numMsgLines = Math.min(Math.max(0, Math.floor((msgBottom - ty) / lineSpacing)), 4);
+  for (let i = 0; i < numMsgLines; i++) {
+    hRule(ctx, colPad, ty + i * lineSpacing, colW, PC.ruleLine);
+  }
+
+  vRule(ctx, divX, backY + 14, H - framePad + 4, PC.divider);
+
+  // Right column — address starts BELOW the stamp
   const rightX = divX + 14;
   const rightW = W - framePad - rightX;
-  let ry = stY + 24;
+  let ry = stY + stH + 14;
+
+  ctx.font = "600 8px DM Sans, sans-serif";
+  ctx.fillStyle = PC.label; ctx.textAlign = "left";
+  ctx.fillText("A D D R E S S", rightX, ry);
+  ry += 20;
 
   ctx.font = "700 10px DM Sans, sans-serif";
-  ctx.fillStyle = "#a09088"; ctx.textAlign = "left";
-  ctx.fillText("TO :", rightX, ry); ry += 28;
+  ctx.fillStyle = PC.to;
+  ctx.fillText("TO :", rightX, ry); ry += 26;
 
   const borderFields = ["NAME", "STREET", "CITY / STATE / ZIP"];
   for (const field of borderFields) {
     ctx.font = "500 7px DM Sans, sans-serif";
-    ctx.fillStyle = "#c8bcb0";
+    ctx.fillStyle = PC.label;
     ctx.fillText(field, rightX, ry - 4);
-    hRule(ctx, rightX, ry, rightW, "#d0c8c0");
+    hRule(ctx, rightX, ry, rightW, PC.fieldRule);
     ry += 36;
   }
+
+  ctx.font = "600 9px DM Sans, sans-serif";
+  ctx.fillStyle = PC.caption; ctx.textAlign = "center";
+  ctx.fillText("NEW YORK, NY 10001", divX + (W - divX) / 2, H - framePad - 8);
 }
 
 const DRAW_FNS = { split: drawSplit, strip: drawStrip, border: drawBorder };
@@ -575,8 +613,8 @@ export default function PostcardEditor({ photo, onClose, onSaveToLibrary }) {
     if (!canvas || !img) return;
     canvas.width = W; canvas.height = H;
     const ctx = canvas.getContext("2d");
-    DRAW_FNS[activeTemplate](ctx, img, getBuildingName(selectedBuilding), photo.capturedAt, transform, photo.filterLabel);
-  }, [activeTemplate, selectedBuilding, photo.capturedAt, photo.filterLabel]);
+    DRAW_FNS[activeTemplate](ctx, img, getBuildingName(selectedBuilding), photo.capturedAt, transform);
+  }, [activeTemplate, selectedBuilding, photo.capturedAt]);
 
   const render = useCallback(async () => {
     const canvas = canvasRef.current;
@@ -592,7 +630,7 @@ export default function PostcardEditor({ photo, onClose, onSaveToLibrary }) {
       await new Promise((res) => { img.onload = res; img.onerror = res; });
       imgCacheRef.current = img;
     }
-    DRAW_FNS[activeTemplate](ctx, img, getBuildingName(selectedBuilding), photo.capturedAt, photoTransform, photo.filterLabel);
+    DRAW_FNS[activeTemplate](ctx, img, getBuildingName(selectedBuilding), photo.capturedAt, photoTransform);
     return canvas;
   }, [photo, activeTemplate, selectedBuilding, photoTransform]);
 
