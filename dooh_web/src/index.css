@@ -30,6 +30,14 @@ html, body {
   to   { opacity: 1; transform: translateY(0); }
 }
 
+@keyframes postcardEnter {
+  from { opacity: 0; transform: scale(0.93) translateY(14px); }
+  to   { opacity: 1; transform: scale(1)    translateY(0);    }
+}
+.postcard-enter {
+  animation: postcardEnter 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
 /* Mobile-friendly styles */
 html,
 body,

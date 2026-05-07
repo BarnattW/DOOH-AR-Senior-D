@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 
 export default function PhotoLibrary({ photos, onClose, onPostcard }) {
   const [selectedPhotoId, setSelectedPhotoId] = useState(photos[0]?.id ?? null);
+  const [sharing, setSharing] = useState(false);
+
   const selectedPhoto = useMemo(
     () => photos.find((photo) => photo.id === selectedPhotoId) ?? photos[0],
     [photos, selectedPhotoId]
@@ -12,11 +14,41 @@ export default function PhotoLibrary({ photos, onClose, onPostcard }) {
       setSelectedPhotoId(null);
       return;
     }
-
     if (!photos.some((photo) => photo.id === selectedPhotoId)) {
       setSelectedPhotoId(photos[0].id);
     }
   }, [photos, selectedPhotoId]);
+
+  const handleShare = async () => {
+    if (!selectedPhoto) return;
+    const filename = `dooh-ar-${formatPhotoTimestamp(selectedPhoto.capturedAt)}.png`;
+    setSharing(true);
+    try {
+      if (navigator.share) {
+        const resp = await fetch(selectedPhoto.url);
+        const blob = await resp.blob();
+        const file = new File([blob], filename, { type: "image/png" });
+        if (navigator.canShare?.({ files: [file] })) {
+          await navigator.share({ files: [file], title: "NYC AR Photo" });
+          return;
+        }
+      }
+      // Desktop fallback: trigger download
+      const a = document.createElement("a");
+      a.href = selectedPhoto.url;
+      a.download = filename;
+      a.click();
+    } catch (err) {
+      if (err?.name === "AbortError") return;
+      // Non-abort error: fall back to download
+      const a = document.createElement("a");
+      a.href = selectedPhoto.url;
+      a.download = filename;
+      a.click();
+    } finally {
+      setSharing(false);
+    }
+  };
 
   return (
     <div className="absolute inset-0 z-20 flex flex-col bg-black/90 text-white backdrop-blur-md">
@@ -35,7 +67,7 @@ export default function PhotoLibrary({ photos, onClose, onPostcard }) {
           aria-label="Close photo library"
           className="flex h-11 w-11 items-center justify-center rounded-full border border-white/15 bg-white/10 text-2xl leading-none text-white/80 transition active:scale-95"
         >
-          x
+          ×
         </button>
       </div>
 
@@ -57,13 +89,23 @@ export default function PhotoLibrary({ photos, onClose, onPostcard }) {
                 >
                   Postcard
                 </button>
-                <a
-                  href={selectedPhoto.url}
-                  download={`dooh-ar-${formatPhotoTimestamp(selectedPhoto.capturedAt)}.png`}
-                  className="rounded-full bg-white px-5 py-2 text-sm font-semibold text-black"
+                <button
+                  type="button"
+                  onClick={handleShare}
+                  disabled={sharing}
+                  className="flex items-center gap-1.5 rounded-full bg-white px-5 py-2 text-sm font-semibold text-black transition active:scale-95 disabled:opacity-50"
                 >
-                  Download
-                </a>
+                  {sharing ? (
+                    "…"
+                  ) : (
+                    <>
+                      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+                        <path d="M7 1v8M3.5 4.5 7 1l3.5 3.5M2 11h10" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                      Share
+                    </>
+                  )}
+                </button>
               </div>
             </div>
             <div className="grid max-h-24 grid-flow-col auto-cols-[5rem] gap-2 overflow-x-auto pb-1 scrollbar-hide">

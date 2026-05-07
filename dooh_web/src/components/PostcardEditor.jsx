@@ -13,9 +13,9 @@ function getBuildingName(raw) {
 }
 
 const TEMPLATES = [
-  { id: "split",   label: "Classic",  bg: "linear-gradient(135deg,#ece3d8 0%,#d8cfc4 100%)" },
-  { id: "strip",   label: "Strip",    bg: "linear-gradient(135deg,#d8e4ec 0%,#c4d4e0 100%)" },
-  { id: "border",  label: "Border",   bg: "linear-gradient(135deg,#f0ece4 0%,#e4ddd4 100%)" },
+  { id: "split",  label: "Classic" },
+  { id: "strip",  label: "Strip"   },
+  { id: "border", label: "Border"  },
 ];
 
 const W = 1200;
@@ -130,8 +130,6 @@ function drawPostmark(ctx, cx, cy, r, date) {
 }
 
 // ── Shared back-panel renderer (used by all 3 templates) ─────────────────────
-// Draws: postcard label + postmark + stamp row, rule, building name + date left,
-// vertical divider, right column. panelX/panelW define the full panel bounds.
 function drawBackPanel(ctx, panelX, panelW, building, date, bgColor = "#fdf9f3") {
   ctx.fillStyle = bgColor;
   ctx.fillRect(panelX, 0, panelW, H);
@@ -154,7 +152,6 @@ function drawBackPanel(ctx, panelX, panelW, building, date, bgColor = "#fdf9f3")
   const ruleY = stY + stH + 14;
   hRule(ctx, panelX + pad, ruleY, panelW - pad * 2);
 
-  // Left column: building + date
   const colPad = panelX + pad;
   const divX   = panelX + panelW * 0.52;
   const colW   = divX - colPad - 12;
@@ -184,12 +181,10 @@ function drawBackPanel(ctx, panelX, panelW, building, date, bgColor = "#fdf9f3")
 }
 
 // ── Template A: Classic Split ─────────────────────────────────────────────────
-// Photo left 58% | postcard back right 42%
 function drawSplit(ctx, img, building, date, transform) {
   const splitX = 696;
   drawCoverCropped(ctx, img, 0, 0, splitX, H, transform);
 
-  // Subtle building label on photo
   if (building) {
     const g = ctx.createLinearGradient(0, H - 90, 0, H);
     g.addColorStop(0, "rgba(0,0,0,0)"); g.addColorStop(1, "rgba(0,0,0,0.45)");
@@ -209,7 +204,6 @@ function drawSplit(ctx, img, building, date, transform) {
 }
 
 // ── Template B: Strip ─────────────────────────────────────────────────────────
-// Full-width photo top | postcard back bottom strip
 function drawStrip(ctx, img, building, date, transform) {
   const photoH = 520;
   drawCoverCropped(ctx, img, 0, 0, W, photoH, transform);
@@ -229,7 +223,6 @@ function drawStrip(ctx, img, building, date, transform) {
   ctx.strokeStyle = "#e0d8cc"; ctx.lineWidth = 1;
   ctx.beginPath(); ctx.moveTo(0, photoH); ctx.lineTo(W, photoH); ctx.stroke();
 
-  // Back strip — draw manually to fit the shorter height
   const pad  = 24;
   const stW  = 64, stH = 72;
   const stX  = W - pad - stW;
@@ -276,7 +269,6 @@ function drawStrip(ctx, img, building, date, transform) {
 }
 
 // ── Template C: Border ────────────────────────────────────────────────────────
-// White frame wrapper | photo with padding | postcard back strip inside frame
 function drawBorder(ctx, img, building, date, transform) {
   const framePad = 24;
   const backH    = 160;
@@ -288,10 +280,8 @@ function drawBorder(ctx, img, building, date, transform) {
   ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, W, H);
   drawCoverCropped(ctx, img, photoX, photoY, photoW, photoH, transform);
 
-  // Thin rule separating photo from back
   hRule(ctx, framePad, photoY + photoH + 1, photoW, "#e8e0d8");
 
-  // Back area inside the white frame
   const pad   = 20;
   const stW   = 60, stH = 66;
   const stX   = W - framePad - pad - stW;
@@ -336,6 +326,85 @@ function drawBorder(ctx, img, building, date, transform) {
 
 const DRAW_FNS = { split: drawSplit, strip: drawStrip, border: drawBorder };
 
+// ── Design tokens ─────────────────────────────────────────────────────────────
+const S = {
+  bg:          "#0d0a07",
+  surface:     "rgba(255,255,255,0.04)",
+  border:      "rgba(255,255,255,0.08)",
+  borderMed:   "rgba(255,255,255,0.14)",
+  accent:      "#b83020",
+  accentMuted: "rgba(175,80,50,0.75)",
+  accentGlow:  "rgba(175,80,50,0.18)",
+  textPrimary: "rgba(255,255,255,0.88)",
+  textSec:     "rgba(255,255,255,0.5)",
+  textMuted:   "rgba(255,255,255,0.28)",
+  syne:        "'Syne', sans-serif",
+  dm:          "'DM Sans', sans-serif",
+};
+
+// ── Template thumbnail previews ───────────────────────────────────────────────
+function TemplateThumbnail({ id, active }) {
+  const border = `1.5px solid ${active ? "rgba(184,48,32,0.85)" : "rgba(255,255,255,0.1)"}`;
+  const glow   = active ? "0 0 0 3px rgba(184,48,32,0.2)" : "none";
+  const photo  = "linear-gradient(150deg, #7a6450 0%, #3c2a1a 100%)";
+  const paper  = "#e8ddd0";
+
+  const stamp = (w = 10, h = 13) => (
+    <div style={{ width: w, height: h, background: "#fff", border: "0.5px solid #c0b4a8", flexShrink: 0 }} />
+  );
+
+  if (id === "split") return (
+    <div style={{
+      width: 78, height: 52, display: "flex", borderRadius: 5, overflow: "hidden",
+      border, boxShadow: glow, transition: "box-shadow 0.2s, border-color 0.2s",
+    }}>
+      <div style={{ flex: "0 0 57%", background: photo }} />
+      <div style={{ flex: 1, background: paper, display: "flex", flexDirection: "column", padding: "5px 5px 4px 4px", gap: 3 }}>
+        <div style={{ marginLeft: "auto" }}>{stamp(10, 13)}</div>
+        <div style={{ height: 1, background: "#d0c4b8", margin: "1px 0" }} />
+        <div style={{ height: 2, background: "#cbbfb0", borderRadius: 1, width: "85%" }} />
+        <div style={{ height: 2, background: "#cbbfb0", borderRadius: 1, width: "60%" }} />
+      </div>
+    </div>
+  );
+
+  if (id === "strip") return (
+    <div style={{
+      width: 78, height: 52, display: "flex", flexDirection: "column", borderRadius: 5, overflow: "hidden",
+      border, boxShadow: glow, transition: "box-shadow 0.2s, border-color 0.2s",
+    }}>
+      <div style={{ flex: "0 0 62%", background: photo }} />
+      <div style={{ flex: 1, background: paper, display: "flex", alignItems: "center", padding: "0 5px", gap: 5 }}>
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 2 }}>
+          <div style={{ height: 2, background: "#cbbfb0", borderRadius: 1 }} />
+          <div style={{ height: 2, background: "#cbbfb0", borderRadius: 1, width: "65%" }} />
+        </div>
+        {stamp(8, 11)}
+      </div>
+    </div>
+  );
+
+  if (id === "border") return (
+    <div style={{
+      width: 78, height: 52, borderRadius: 5, overflow: "hidden",
+      background: "#fff", border, boxShadow: glow,
+      padding: "4px 4px 0 4px", display: "flex", flexDirection: "column", gap: 2,
+      transition: "box-shadow 0.2s, border-color 0.2s",
+    }}>
+      <div style={{ flex: 1, background: photo, borderRadius: "3px 3px 0 0" }} />
+      <div style={{ height: 16, background: "#f0e8dc", display: "flex", alignItems: "center", padding: "0 4px", gap: 4 }}>
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 2 }}>
+          <div style={{ height: 2, background: "#cbbfb0", borderRadius: 1, width: "75%" }} />
+          <div style={{ height: 2, background: "#cbbfb0", borderRadius: 1, width: "50%" }} />
+        </div>
+        {stamp(8, 10)}
+      </div>
+    </div>
+  );
+
+  return null;
+}
+
 // ── Component ─────────────────────────────────────────────────────────────────
 export default function PostcardEditor({ photo, onClose, onSaveToLibrary }) {
   const [activeTemplate,     setActiveTemplate]     = useState("split");
@@ -347,14 +416,13 @@ export default function PostcardEditor({ photo, onClose, onSaveToLibrary }) {
   const [saving,             setSaving]             = useState(false);
   const [libSaved,           setLibSaved]           = useState(false);
 
-  const canvasRef      = useRef(null);
-  const renderTimer    = useRef(null);
-  const dragRef        = useRef(null);
-  const transformRef   = useRef(photoTransform);   // always-current, no re-render cost
-  const imgCacheRef    = useRef(null);             // loaded Image element, reused for live renders
-  const rafRef         = useRef(null);
+  const canvasRef    = useRef(null);
+  const renderTimer  = useRef(null);
+  const dragRef      = useRef(null);
+  const transformRef = useRef(photoTransform);
+  const imgCacheRef  = useRef(null);
+  const rafRef       = useRef(null);
 
-  // Cache the photo image so live renders are synchronous
   useEffect(() => {
     ensureFonts().then(() => document.fonts.ready).then(() => {
       const img = new Image();
@@ -363,17 +431,13 @@ export default function PostcardEditor({ photo, onClose, onSaveToLibrary }) {
     });
   }, [photo.url]);
 
-  // Keep transformRef in sync whenever state changes (e.g. Reset button, template switch)
-  useEffect(() => {
-    transformRef.current = photoTransform;
-  }, [photoTransform]);
+  useEffect(() => { transformRef.current = photoTransform; }, [photoTransform]);
 
   useEffect(() => {
     setPhotoTransform({ panX: 0, panY: 0, scale: 1 });
     setCropMode(false);
   }, [activeTemplate]);
 
-  // Synchronous canvas draw using cached image — used for live crop feedback
   const renderLiveToCanvas = useCallback((transform) => {
     const canvas = canvasRef.current;
     const img    = imgCacheRef.current;
@@ -383,7 +447,6 @@ export default function PostcardEditor({ photo, onClose, onSaveToLibrary }) {
     DRAW_FNS[activeTemplate](ctx, img, getBuildingName(selectedBuilding), photo.capturedAt, transform);
   }, [activeTemplate, selectedBuilding, photo.capturedAt]);
 
-  // Full async render → updates previewUrl (used outside crop mode and for save)
   const render = useCallback(async () => {
     const canvas = canvasRef.current;
     if (!canvas) return null;
@@ -413,12 +476,11 @@ export default function PostcardEditor({ photo, onClose, onSaveToLibrary }) {
     return () => { cancelled = true; clearTimeout(renderTimer.current); };
   }, [render]);
 
-  // ── Crop — bypass React state during drag for 60fps smoothness ────────────
+  // ── Crop gesture handlers ──────────────────────────────────────────────────
   const handlePointerDown = (e) => {
     e.currentTarget.setPointerCapture(e.pointerId);
     dragRef.current = {
-      startX:    e.clientX,
-      startY:    e.clientY,
+      startX: e.clientX, startY: e.clientY,
       startPanX: transformRef.current.panX,
       startPanY: transformRef.current.panY,
       w: e.currentTarget.offsetWidth,
@@ -443,7 +505,6 @@ export default function PostcardEditor({ photo, onClose, onSaveToLibrary }) {
   const handlePointerUp = () => {
     dragRef.current = null;
     if (rafRef.current) { cancelAnimationFrame(rafRef.current); rafRef.current = null; }
-    // Commit final position to state → triggers debounced previewUrl update
     setPhotoTransform(transformRef.current);
   };
 
@@ -456,17 +517,17 @@ export default function PostcardEditor({ photo, onClose, onSaveToLibrary }) {
     transformRef.current = next;
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
     rafRef.current = requestAnimationFrame(() => renderLiveToCanvas(next));
-    setPhotoTransform(next); // keep scale label in sync
+    setPhotoTransform(next);
   };
 
-  // ── Save ──────────────────────────────────────────────────────────────────
+  // ── Save / Share ───────────────────────────────────────────────────────────
   const renderBlob = async () => {
     const canvas = await render();
     if (!canvas) return null;
     return new Promise((res) => canvas.toBlob(res, "image/png"));
   };
 
-  const handleSave = async () => {
+  const handleShare = async () => {
     setSaving(true);
     try {
       const blob = await renderBlob();
@@ -474,7 +535,10 @@ export default function PostcardEditor({ photo, onClose, onSaveToLibrary }) {
       const filename = `postcard-${Date.now()}.png`;
       if (navigator.share && navigator.canShare) {
         const file = new File([blob], filename, { type: "image/png" });
-        if (navigator.canShare({ files: [file] })) { await navigator.share({ files: [file] }); return; }
+        if (navigator.canShare({ files: [file] })) {
+          await navigator.share({ files: [file], title: "NYC Postcard" });
+          return;
+        }
       }
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -494,171 +558,279 @@ export default function PostcardEditor({ photo, onClose, onSaveToLibrary }) {
     } finally { setSaving(false); }
   };
 
-  const scaleLabel = photoTransform.scale === 1 ? "1×" : `${photoTransform.scale.toFixed(1)}×`;
+  const scaleLabel    = photoTransform.scale === 1 ? "1×" : `${photoTransform.scale.toFixed(1)}×`;
   const buildingLabel = getBuildingName(selectedBuilding);
 
   return (
-    <div className="absolute inset-0 z-30 flex flex-col bg-black/95 text-white backdrop-blur-sm">
+    <div className="absolute inset-0 z-30 flex flex-col text-white" style={{ background: S.bg }}>
+
+      {/* Grain texture overlay */}
+      <div
+        className="pointer-events-none absolute inset-0 z-0"
+        style={{
+          backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='256' height='256'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='256' height='256' filter='url(%23n)'/%3E%3C/svg%3E")`,
+          backgroundSize: "200px",
+          opacity: 0.035,
+          mixBlendMode: "overlay",
+        }}
+      />
 
       {/* Header */}
-      <div className="flex items-center justify-between px-4 pt-[max(1rem,env(safe-area-inset-top))] sm:px-5 sm:pt-5">
+      <div className="relative z-10 flex items-center justify-between px-4 pb-2 pt-[max(1rem,env(safe-area-inset-top))] sm:px-5 sm:pt-5">
         <button
           type="button" onClick={onClose} aria-label="Back"
-          className="flex h-11 w-11 items-center justify-center rounded-full border border-white/15 bg-white/10 text-white/80 transition active:scale-95"
-        >←</button>
-        <div className="text-center">
-          <div className="text-[10px] font-semibold uppercase tracking-[0.3em] text-white/40">Create</div>
-          <div className="text-sm text-white/85">Postcard</div>
+          className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full transition active:scale-90"
+          style={{ background: S.surface, border: `1px solid ${S.border}`, color: S.textSec }}
+        >
+          <svg width="17" height="17" viewBox="0 0 17 17" fill="none">
+            <path d="M10.5 3.5 6 8.5l4.5 5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
+
+        <div className="flex flex-col items-center gap-0.5">
+          <span
+            className="text-[9px] font-bold uppercase tracking-[0.45em]"
+            style={{ color: S.accentMuted, fontFamily: S.syne }}
+          >Postcard Studio</span>
+          <span
+            className="text-[15px] font-bold leading-none"
+            style={{ color: S.textPrimary, fontFamily: S.syne }}
+          >Create</span>
         </div>
+
         <div className="flex items-center gap-2">
           {onSaveToLibrary && (
             <button
               type="button" onClick={handleSaveToLibrary}
               disabled={saving || !previewUrl}
-              className="rounded-full border px-4 py-2 text-sm font-semibold transition active:scale-95 disabled:opacity-40"
+              className="h-9 rounded-full px-4 text-xs font-semibold transition active:scale-95 disabled:opacity-30"
               style={{
-                borderColor: libSaved ? "rgba(100,210,100,0.6)" : "rgba(255,255,255,0.25)",
-                color:       libSaved ? "rgb(100,210,100)"       : "rgba(255,255,255,0.8)",
+                border: libSaved ? "1px solid rgba(100,200,100,0.5)" : `1px solid ${S.borderMed}`,
+                color:  libSaved ? "rgb(110,215,110)" : S.textSec,
+                background: S.surface,
+                fontFamily: S.dm,
               }}
-            >{libSaved ? "Saved ✓" : "Library"}</button>
+            >{libSaved ? "✓ Saved" : "Library"}</button>
           )}
           <button
-            type="button" onClick={handleSave}
+            type="button" onClick={handleShare}
             disabled={saving || !previewUrl}
-            className="rounded-full bg-white px-5 py-2 text-sm font-semibold text-black transition active:scale-95 disabled:opacity-40"
-          >{saving ? "…" : "Save"}</button>
+            className="flex h-9 items-center gap-1.5 rounded-full px-4 text-xs font-bold transition active:scale-95 disabled:opacity-30"
+            style={{
+              background: saving ? "rgba(140,35,20,0.7)" : S.accent,
+              color: "#fff",
+              fontFamily: S.syne,
+              letterSpacing: "0.06em",
+              textTransform: "uppercase",
+            }}
+          >
+            {saving ? "…" : (
+              <>
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+                  <path d="M6 1v7M2.5 4 6 1l3.5 3M1 10.5h10" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+                Share
+              </>
+            )}
+          </button>
         </div>
       </div>
 
-      {/* Preview */}
-      <div className="relative flex min-h-0 flex-1 items-center justify-center p-4">
-        {/* Static preview — hidden while cropping so canvas shows through */}
+      {/* Postcard preview */}
+      <div className="relative z-10 flex min-h-0 flex-1 items-center justify-center px-5 py-3">
         {previewUrl && !cropMode && (
-          <img
-            src={previewUrl} alt="Postcard preview"
-            className="max-h-full w-full rounded-lg object-contain shadow-2xl shadow-black/60"
-          />
+          <div
+            className="postcard-enter w-full"
+            style={{
+              maxHeight: "100%",
+              borderRadius: 6,
+              border: "1px solid rgba(90,65,40,0.35)",
+              boxShadow: "0 48px 96px rgba(0,0,0,0.65), 0 16px 40px rgba(0,0,0,0.45), 0 3px 10px rgba(0,0,0,0.35)",
+              overflow: "hidden",
+            }}
+          >
+            <img
+              src={previewUrl}
+              alt="Postcard preview"
+              style={{ display: "block", width: "100%", height: "auto" }}
+            />
+          </div>
         )}
 
-        {/* Canvas — live during crop, hidden otherwise */}
         <canvas
           ref={canvasRef}
-          className="rounded-lg shadow-2xl shadow-black/60"
           style={{
             display: cropMode ? "block" : "none",
             maxHeight: "100%",
             width: "100%",
-            objectFit: "contain",
+            borderRadius: 6,
+            border: "1px solid rgba(90,65,40,0.35)",
+            boxShadow: "0 32px 64px rgba(0,0,0,0.55)",
           }}
         />
 
         {!previewUrl && !cropMode && (
-          <div className="h-48 w-full animate-pulse rounded-lg" style={{ backgroundColor: "rgba(255,255,255,0.06)" }} />
-        )}
-
-        {cropMode && (
           <div
-            className="absolute inset-4 rounded-lg"
-            style={{ cursor: "grab", touchAction: "none" }}
-            onPointerDown={handlePointerDown}
-            onPointerMove={handlePointerMove}
-            onPointerUp={handlePointerUp}
-            onPointerCancel={handlePointerUp}
-            onWheel={handleWheel}
+            className="h-48 w-full animate-pulse rounded-lg"
+            style={{ background: "rgba(90,65,40,0.12)", border: "1px solid rgba(90,65,40,0.2)" }}
           />
         )}
 
         {cropMode && (
-          <div
-            className="pointer-events-none absolute bottom-6 left-1/2 -translate-x-1/2 rounded-full px-3 py-1 text-xs font-semibold"
-            style={{ background: "rgba(0,0,0,0.55)", color: "rgba(255,255,255,0.7)", backdropFilter: "blur(8px)" }}
-          >drag to pan · scroll to zoom · {scaleLabel}</div>
+          <>
+            <div
+              className="absolute inset-5 rounded-lg"
+              style={{ cursor: "grab", touchAction: "none" }}
+              onPointerDown={handlePointerDown}
+              onPointerMove={handlePointerMove}
+              onPointerUp={handlePointerUp}
+              onPointerCancel={handlePointerUp}
+              onWheel={handleWheel}
+            />
+            <div
+              className="pointer-events-none absolute bottom-7 left-1/2 -translate-x-1/2 rounded-full px-4 py-1.5 text-xs"
+              style={{
+                background: "rgba(13,10,7,0.8)",
+                color: S.textSec,
+                border: `1px solid ${S.border}`,
+                backdropFilter: "blur(8px)",
+                fontFamily: S.dm,
+              }}
+            >drag to pan · scroll to zoom · {scaleLabel}</div>
+          </>
         )}
       </div>
 
       {/* Controls */}
-      {cropMode ? (
-        <div className="space-y-3 px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] sm:pb-5">
-          <div className="flex items-center gap-3">
-            <span className="text-[10px] font-semibold uppercase tracking-[0.25em]" style={{ color: "rgba(255,255,255,0.4)" }}>Zoom</span>
-            <button type="button" onClick={() => setPhotoTransform(p => ({ ...p, scale: Math.max(1, p.scale - 0.25) }))}
-              className="flex h-9 w-9 items-center justify-center rounded-full border border-white/20 text-white/70 text-lg leading-none active:scale-95">−</button>
-            <span className="min-w-[3rem] text-center text-sm font-semibold text-white/80">{scaleLabel}</span>
-            <button type="button" onClick={() => setPhotoTransform(p => ({ ...p, scale: Math.min(4, p.scale + 0.25) }))}
-              className="flex h-9 w-9 items-center justify-center rounded-full border border-white/20 text-white/70 text-lg leading-none active:scale-95">+</button>
-            <button type="button" onClick={() => setPhotoTransform({ panX: 0, panY: 0, scale: 1 })}
-              className="ml-auto text-xs text-white/40 active:text-white/70">Reset</button>
-          </div>
-          <button type="button" onClick={() => setCropMode(false)}
-            className="w-full rounded-xl py-2.5 text-sm font-semibold transition active:scale-95"
-            style={{ background: "rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.85)" }}>Done Cropping</button>
-        </div>
-      ) : (
-        <>
-          {/* Building + crop row */}
-          <div className="flex items-center justify-between px-4 pb-3">
-            <div className="flex flex-col gap-0.5">
-              <span className="text-[10px] font-semibold uppercase tracking-[0.25em]" style={{ color: "rgba(255,255,255,0.35)" }}>Building</span>
-              <span className="text-sm font-semibold text-white/80">{buildingLabel ?? "None detected"}</span>
-            </div>
-            <div className="flex items-center gap-2">
+      <div className="relative z-10">
+        {cropMode ? (
+          <div className="space-y-3 px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] sm:pb-5">
+            <div className="flex items-center gap-3">
+              <span
+                className="text-[9px] font-bold uppercase tracking-[0.3em]"
+                style={{ color: S.textMuted, fontFamily: S.syne }}
+              >Zoom</span>
               <button
                 type="button"
-                onClick={() => setShowBuildingPicker(p => !p)}
-                className="rounded-full border px-3 py-1.5 text-xs font-semibold transition active:scale-95"
-                style={{ borderColor: "rgba(255,255,255,0.18)", color: "rgba(255,255,255,0.55)", backgroundColor: "rgba(255,255,255,0.07)" }}
-              >Wrong building?</button>
+                onClick={() => setPhotoTransform(p => ({ ...p, scale: Math.max(1, p.scale - 0.25) }))}
+                className="flex h-9 w-9 items-center justify-center rounded-full text-lg leading-none transition active:scale-90"
+                style={{ border: `1px solid ${S.border}`, color: S.textSec, background: S.surface }}
+              >−</button>
+              <span
+                className="min-w-[3rem] text-center text-sm font-bold"
+                style={{ color: S.textPrimary, fontFamily: S.syne }}
+              >{scaleLabel}</span>
               <button
                 type="button"
-                onClick={() => { renderLiveToCanvas(transformRef.current); setCropMode(true); }}
-                className="rounded-full border px-3 py-1.5 text-xs font-semibold transition active:scale-95"
-                style={{ borderColor: "rgba(255,255,255,0.18)", color: "rgba(255,255,255,0.55)", backgroundColor: "rgba(255,255,255,0.07)" }}
-              >Crop</button>
+                onClick={() => setPhotoTransform(p => ({ ...p, scale: Math.min(4, p.scale + 0.25) }))}
+                className="flex h-9 w-9 items-center justify-center rounded-full text-lg leading-none transition active:scale-90"
+                style={{ border: `1px solid ${S.border}`, color: S.textSec, background: S.surface }}
+              >+</button>
+              <button
+                type="button"
+                onClick={() => setPhotoTransform({ panX: 0, panY: 0, scale: 1 })}
+                className="ml-auto text-xs transition active:opacity-50"
+                style={{ color: S.textMuted, fontFamily: S.dm }}
+              >Reset</button>
             </div>
+            <button
+              type="button"
+              onClick={() => setCropMode(false)}
+              className="w-full rounded-xl py-3 text-sm font-bold transition active:scale-[0.98]"
+              style={{
+                background: S.surface,
+                color: S.textPrimary,
+                border: `1px solid ${S.border}`,
+                fontFamily: S.syne,
+                letterSpacing: "0.05em",
+              }}
+            >Done Cropping</button>
           </div>
+        ) : (
+          <>
+            {/* Building + crop row */}
+            <div
+              className="mx-4 mb-3 flex items-center justify-between rounded-2xl px-4 py-3"
+              style={{ background: S.surface, border: `1px solid ${S.border}` }}
+            >
+              <div>
+                <div
+                  className="mb-0.5 text-[9px] font-bold uppercase tracking-[0.35em]"
+                  style={{ color: S.accentMuted, fontFamily: S.syne }}
+                >Building</div>
+                <div
+                  className="text-sm font-semibold"
+                  style={{ color: buildingLabel ? S.textPrimary : S.textMuted, fontFamily: S.syne }}
+                >{buildingLabel ?? "None detected"}</div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowBuildingPicker(p => !p)}
+                  className="rounded-full px-3 py-1.5 text-xs font-semibold transition active:scale-95"
+                  style={{ border: `1px solid ${S.border}`, color: S.textSec, background: "transparent", fontFamily: S.dm }}
+                >Change</button>
+                <button
+                  type="button"
+                  onClick={() => { renderLiveToCanvas(transformRef.current); setCropMode(true); }}
+                  className="rounded-full px-3 py-1.5 text-xs font-semibold transition active:scale-95"
+                  style={{ border: `1px solid ${S.border}`, color: S.textSec, background: "transparent", fontFamily: S.dm }}
+                >Crop</button>
+              </div>
+            </div>
 
-          {/* Building picker (expandable) */}
-          {showBuildingPicker && (
-            <div className="flex flex-wrap gap-2 px-4 pb-3">
-              <button
-                type="button"
-                onClick={() => { setSelectedBuilding(null); setShowBuildingPicker(false); }}
-                className="rounded-full border px-3 py-1 text-xs font-semibold transition active:scale-95"
-                style={{
-                  borderColor: selectedBuilding === null ? "rgba(255,255,255,0.7)" : "rgba(255,255,255,0.15)",
-                  color:       selectedBuilding === null ? "#fff"                   : "rgba(255,255,255,0.5)",
-                  backgroundColor: selectedBuilding === null ? "rgba(255,255,255,0.15)" : "transparent",
-                }}
-              >None</button>
-              {BUILDING_KEYS.map((key) => (
-                <button key={key} type="button"
-                  onClick={() => { setSelectedBuilding(key); setShowBuildingPicker(false); }}
-                  className="rounded-full border px-3 py-1 text-xs font-semibold transition active:scale-95"
-                  style={{
-                    borderColor: selectedBuilding === key ? "rgba(255,255,255,0.7)" : "rgba(255,255,255,0.15)",
-                    color:       selectedBuilding === key ? "#fff"                   : "rgba(255,255,255,0.5)",
-                    backgroundColor: selectedBuilding === key ? "rgba(255,255,255,0.15)" : "transparent",
-                  }}
-                >{BUILDING_DISPLAY[key]}</button>
-              ))}
-            </div>
-          )}
+            {/* Building picker */}
+            {showBuildingPicker && (
+              <div className="flex flex-wrap gap-2 px-4 pb-3">
+                {[null, ...BUILDING_KEYS].map((key) => {
+                  const isActive = selectedBuilding === key;
+                  return (
+                    <button
+                      key={key ?? "none"}
+                      type="button"
+                      onClick={() => { setSelectedBuilding(key); setShowBuildingPicker(false); }}
+                      className="rounded-full px-3 py-1 text-xs font-semibold transition active:scale-95"
+                      style={{
+                        border:      isActive ? "1px solid rgba(184,48,32,0.7)" : `1px solid ${S.border}`,
+                        color:       isActive ? "rgba(220,120,90,0.95)"          : S.textSec,
+                        background:  isActive ? S.accentGlow                     : "transparent",
+                        fontFamily: S.dm,
+                      }}
+                    >{key === null ? "None" : BUILDING_DISPLAY[key]}</button>
+                  );
+                })}
+              </div>
+            )}
 
-          {/* Template picker */}
-          <div className="flex gap-3 overflow-x-auto px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] sm:pb-5">
-            {TEMPLATES.map((t) => (
-              <button key={t.id} type="button" onClick={() => setActiveTemplate(t.id)}
-                className={`flex flex-shrink-0 flex-col items-center gap-1.5 rounded-xl border p-1 transition active:scale-95 ${
-                  activeTemplate === t.id ? "border-white/60 ring-2 ring-white/40" : "border-white/10 opacity-60 hover:opacity-90"
-                }`}
-              >
-                <div className="h-14 w-24 rounded-lg" style={{ background: t.bg }} />
-                <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/70">{t.label}</span>
-              </button>
-            ))}
-          </div>
-        </>
-      )}
+            {/* Template picker */}
+            <div className="px-4 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] sm:pb-5">
+              <div
+                className="mb-2.5 text-[9px] font-bold uppercase tracking-[0.35em]"
+                style={{ color: S.textMuted, fontFamily: S.syne }}
+              >Layout</div>
+              <div className="flex gap-4">
+                {TEMPLATES.map((t) => (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => setActiveTemplate(t.id)}
+                    className="flex flex-shrink-0 flex-col items-center gap-2 transition active:scale-95"
+                  >
+                    <TemplateThumbnail id={t.id} active={activeTemplate === t.id} />
+                    <span
+                      className="text-[9px] font-bold uppercase tracking-[0.2em] transition-colors"
+                      style={{
+                        color:      activeTemplate === t.id ? "rgba(220,110,80,0.9)" : S.textMuted,
+                        fontFamily: S.syne,
+                      }}
+                    >{t.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
+      </div>
     </div>
   );
 }
