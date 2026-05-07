@@ -1,16 +1,23 @@
 import { useEffect, useRef, useState } from "react";
 import { BUILDING_URLS } from "../../constants/buildings";
+import { useArStore } from "../../store/arStore";
 
 export function DetectionOverlay({ detections, containerRef }) {
   const buttonsContainerRef = useRef(null);
   const [buttonPositions, setButtonPositions] = useState([]);
+  const arState = useArStore((s) => s.arState);
 
   useEffect(() => {
     if (!containerRef?.current || !buttonsContainerRef.current) return;
 
+    if (arState !== "tracking") {
+      setButtonPositions([]);
+      return;
+    }
+
     const parentContainer = containerRef.current;
     const canvas = parentContainer.querySelector("canvas");
-    
+
     if (!canvas) return;
 
     const positions = detections
@@ -45,7 +52,7 @@ export function DetectionOverlay({ detections, containerRef }) {
       .filter(Boolean);
 
     setButtonPositions(positions);
-  }, [detections, containerRef]);
+  }, [detections, containerRef, arState]);
 
   return (
     <div
