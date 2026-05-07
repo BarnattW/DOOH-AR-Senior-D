@@ -77,23 +77,7 @@ export function draw(gfx, textContainer, detections, time) {
   // BR
   gfx.moveTo(x2 + jit(), y2 - seg + jit()); gfx.lineTo(x2 + jit(), y2 + jit()); gfx.lineTo(x2 - seg + jit(), y2 + jit());
 
-  // Chromatic aberration label — three offset copies (R / W / B)
-  const labelSize = Math.min(18, Math.max(12, h * 0.12));
-  const baseStyle = { fontFamily: '"Courier New", monospace', fontWeight: 'bold', fontSize: labelSize };
-  const name = detections[0].label;
-  const shift = 3 + Math.sin(time * 8) * 2;
-
-  const rTxt = new PIXI.Text(name, new PIXI.TextStyle({ ...baseStyle, fill: 0xff0000, alpha: 0.75 }));
-  rTxt.anchor.set(0.5, 1); rTxt.position.set(cx - shift, y1 - 8);
-  textContainer.addChild(rTxt);
-
-  const bTxt = new PIXI.Text(name, new PIXI.TextStyle({ ...baseStyle, fill: 0x0088ff, alpha: 0.75 }));
-  bTxt.anchor.set(0.5, 1); bTxt.position.set(cx + shift, y1 - 8);
-  textContainer.addChild(bTxt);
-
-  const wTxt = new PIXI.Text(name, new PIXI.TextStyle({ ...baseStyle, fill: 0xffffff }));
-  wTxt.anchor.set(0.5, 1); wTxt.position.set(cx, y1 - 8);
-  textContainer.addChild(wTxt);
+  const boxMin_ = boxMin;
 
   // Flashing "ERR" badge
   if (Math.sin(time * 6) > 0.3) {

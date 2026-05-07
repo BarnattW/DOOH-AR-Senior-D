@@ -1,6 +1,8 @@
 import { useRef, useEffect, useState } from 'react';
 import { FILTERS } from '../filters';
 
+const PICKER_FILTERS = FILTERS.filter(f => f.id !== 'glitch');
+
 /**
  * Horizontal scrollable filter selector pinned inside the camera view.
  * Shows the active filter name as a fading badge above the pill row.
@@ -40,7 +42,7 @@ export default function FilterPicker({ activeId, onSelect, pulsing = false }) {
           ${pulsing ? 'ring-2 ring-white/50 ring-offset-2 ring-offset-transparent animate-pulse' : ''}`}
         style={{ WebkitOverflowScrolling: 'touch' }}
       >
-        {FILTERS.map(f => (
+        {PICKER_FILTERS.map(f => (
           <button
             key={f.id}
             onClick={() => onSelect(f.id)}

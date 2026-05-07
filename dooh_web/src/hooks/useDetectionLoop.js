@@ -8,7 +8,7 @@ const DETECTION_MAX_AGE_MS = 2500;
 
 const supportsRVFC = "requestVideoFrameCallback" in HTMLVideoElement.prototype;
 
-export function useDetectionLoop({ isRunning, session, videoRef, canvasRef, detect, onDetections }) {
+export function useDetectionLoop({ isRunning, session, videoRef, canvasRef, detect, onDetections, isMovingRef }) {
   const latestRequestId = useRef(0);
   const lastStableDetectionsRef = useRef([]);
   const lastDetectionAtRef = useRef(0);
@@ -22,6 +22,11 @@ export function useDetectionLoop({ isRunning, session, videoRef, canvasRef, dete
 
     const runDetection = async () => {
       if (cancelled || !videoRef.current?.videoWidth) {
+        scheduleNext();
+        return;
+      }
+
+      if (isMovingRef?.current) {
         scheduleNext();
         return;
       }

@@ -4,21 +4,22 @@ import { Camera, useCamera } from "./components/camera/Camera";
 import { useDetectorMode } from "./hooks/useDetectorMode";
 import { useGeolocation } from "./hooks/useGeolocation";
 import { useDetectionLoop } from "./hooks/useDetectionLoop";
+import { useMotionGate } from "./hooks/useMotionGate";
 import { usePixiOverlay } from "./hooks/usePixiOverlay";
 import { DetectionOverlay } from "./components/ar/DetectionOverlay";
 import { usePhotoLibrary } from "./hooks/usePhotoLibrary";
 import { isNearLandmark } from "./util/geolocation";
 import { FILTERS, DEFAULT_FILTER_ID } from "./filters";
-import LocationStatus from "./components/LocationStatus";
 import CameraControls from "./components/CameraControls";
 import FilterPicker from "./components/FilterPicker";
 import PhotoLibrary from "./components/PhotoLibrary";
 import PostcardEditor from "./components/PostcardEditor";
 import StartPanel from "./components/StartPanel";
 import LockOnOverlay from "./components/LockOnOverlay";
-import TutorialCard from "./components/onboarding/TutorialCard";
+import TutorialFlow from "./components/onboarding/TutorialFlow";
 import ModelToggle from "./components/ModelToggle";
 import DebugOverlay from "./components/DebugOverlay";
+import LocationStatus from "./components/LocationStatus";
 
 const EMPIRE_STATE = { lat: 40.748817, lng: -73.985428 };
 const RADIUS_M = 5000;
@@ -35,6 +36,7 @@ export default function App() {
 
   // ── Camera ────────────────────────────────────────────────────────────────
   const { videoRef, isRunning, startWebcam, stopWebcam, zoom, setZoom, zoomCaps } = useCamera();
+  useEffect(() => { startWebcam(); }, []);
 
   // ── Detection: original / strong WS endpoints, or local ONNX ──────────────
   const [detectionMode, setDetectionMode] = useState("original"); // "original" | "strong" | "local"
@@ -97,7 +99,6 @@ export default function App() {
     if (f) activeFilterRef.current = f;
   }, [arState, activeFilterId]);
 
-
   // ── PixiJS overlay ────────────────────────────────────────────────────────
   usePixiOverlay({
     canvasRef: pixiCanvasRef,
@@ -108,44 +109,17 @@ export default function App() {
   });
 
   // ── Tutorial ──────────────────────────────────────────────────────────────
-  // 0=point, 1=glitching, 2=explore filters, 3=done
-  const [tutorialStep, setTutorialStep] = useState(() => {
-    const stored = localStorage.getItem("dooh_onboarded");
-    console.log("[tutorial] init — localStorage dooh_onboarded:", stored);
-    return stored === "true" ? 3 : 0;
-  });
+  const [showTutorial, setShowTutorial] = useState(
+    () => localStorage.getItem("dooh_onboarded") !== "true"
+  );
 
-  const skipTutorial = useCallback(() => {
-    console.trace("[tutorial] skipTutorial called");
+  const finishTutorial = useCallback(() => {
     localStorage.setItem("dooh_onboarded", "true");
-    setTutorialStep(3);
+    setShowTutorial(false);
   }, []);
 
-  // debug
-  useEffect(() => {
-    console.log("[tutorial] tutorialStep changed →", tutorialStep);
-  }, [tutorialStep]);
-
-  useEffect(() => {
-    console.log("[tutorial] detections changed, length:", detections.length, "| tutorialStep:", tutorialStep);
-  }, [detections, tutorialStep]);
-
-  // Step 0 → 1: first positive detection
-  useEffect(() => {
-    console.log("[tutorial] 0→1 effect: tutorialStep:", tutorialStep, "| detections.length:", detections.length);
-    if (tutorialStep !== 0 || detections.length === 0) return;
-    console.log("[tutorial] firing setTutorialStep(1)");
-    setTutorialStep(1);
-  }, [detections, tutorialStep]);
-
-
-  // Step 2 → 3: user picks any filter
-  const prevFilterIdRef = useRef(activeFilterId);
-  useEffect(() => {
-    if (tutorialStep !== 2) return;
-    if (activeFilterId !== prevFilterIdRef.current) skipTutorial();
-    prevFilterIdRef.current = activeFilterId;
-  }, [activeFilterId, tutorialStep, skipTutorial]);
+  // ── Motion gate — skip detections while phone is moving ──────────────────
+  const isMovingRef = useMotionGate();
 
   const {
     photos,
@@ -197,6 +171,7 @@ export default function App() {
     canvasRef: pixiCanvasRef,
     detect,
     onDetections: handleDetections,
+    isMovingRef,
   });
 
   const canStart = !isRunning;
@@ -221,10 +196,8 @@ export default function App() {
             }}
           />
 
-          {/* Detection overlay with clickable "Learn more" buttons */}
           <DetectionOverlay detections={detections} containerRef={pixiCanvasRef} />
 
-          {/* Lock-on typewriter overlay during glitching/lost states */}
           {isRunning && <LockOnOverlay arState={arState} />}
 
           {/* Optional debug overlay (?debug=1) */}
@@ -232,7 +205,7 @@ export default function App() {
 
           <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/55 via-transparent via-35% to-black/75" />
 
-          <div className="pointer-events-none absolute inset-x-0 top-0 z-10 px-4 pt-[max(1rem,env(safe-area-inset-top))] sm:px-5 sm:pt-5">
+          {/* <div className="pointer-events-none absolute inset-x-0 top-0 z-10 px-4 pt-[max(1rem,env(safe-area-inset-top))] sm:px-5 sm:pt-5">
             <div className="flex items-start justify-between gap-3">
               <div className="pointer-events-auto rounded-2xl border border-white/10 bg-black/35 px-4 py-3 backdrop-blur-md">
                 <div className="text-[10px] font-semibold uppercase tracking-[0.3em] text-white/55">
@@ -254,7 +227,7 @@ export default function App() {
                 </div>
               )}
             </div>
-          </div>
+          </div> */}
 
           <div className="absolute inset-x-0 bottom-0 z-10 flex flex-col items-center gap-3">
             {!isRunning && (
@@ -275,10 +248,9 @@ export default function App() {
 
             {isRunning && (
               <>
-                <FilterPicker activeId={activeFilterId} onSelect={setActiveFilterId} pulsing={tutorialStep === 2} />
+                <FilterPicker activeId={activeFilterId} onSelect={setActiveFilterId} />
                 <CameraControls
                   onStart={startWebcam}
-                  onStop={stopWebcam}
                   onCapture={handleCapture}
                   lastPhoto={latestPhoto}
                   onOpenLibrary={openLibrary}
@@ -318,40 +290,7 @@ export default function App() {
             />
           )}
 
-          {/* Step 0 — corner brackets + point card */}
-          {tutorialStep === 0 && isRunning && (
-            <>
-              <div className="pointer-events-none absolute inset-0 z-20">
-                <div className="absolute top-20 left-5 w-9 h-9 border-l-2 border-t-2 border-white/50 rounded-tl animate-pulse" />
-                <div className="absolute top-20 right-5 w-9 h-9 border-r-2 border-t-2 border-white/50 rounded-tr animate-pulse" />
-                <div className="absolute bottom-48 left-5 w-9 h-9 border-l-2 border-b-2 border-white/50 rounded-bl animate-pulse" />
-                <div className="absolute bottom-48 right-5 w-9 h-9 border-r-2 border-b-2 border-white/50 rounded-br animate-pulse" />
-              </div>
-              <TutorialCard
-                title="Point at a building"
-                description="Aim your camera at the Empire State Building, Hudson Yards, or One World Trade Center."
-              />
-            </>
-          )}
-
-          {/* Step 1 — building detected, AR locking on */}
-          {tutorialStep === 1 && isRunning && (
-            <TutorialCard
-              title="Building detected!"
-              description="The AR is locking on. Hold steady while the effect activates."
-              onNext={() => setTutorialStep(2)}
-            />
-          )}
-
-          {/* Step 2 — filter glow + explore card */}
-          {tutorialStep === 2 && isRunning && (
-            <TutorialCard
-              title="Try a filter"
-              description="Swipe the filter strip below and tap one to apply an AR effect to the building."
-              position="bottom"
-              onNext={skipTutorial}
-            />
-          )}
+          {showTutorial && <TutorialFlow onDone={finishTutorial} />}
         </div>
       </div>
     </div>
