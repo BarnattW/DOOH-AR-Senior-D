@@ -73,21 +73,4 @@ export function draw(gfx, textContainer, detections, time, screen, context) {
   gfx.moveTo(poleX, poleTopY - metrics.height * FLAG_OFFSET_Y_FACTOR);
   gfx.lineTo(poleX, poleBottomY);
   drawTexturedFlag(textContainer, poleX, poleTopY, flagWidth, flagHeight, time, context);
-
-  const title = getCachedObject(context, 'flag-title', () => new PIXI.Text('AMERICAN FLAG', new PIXI.TextStyle({
-      fontFamily: 'Arial',
-      fontWeight: 'bold',
-      fill: 0xffffff,
-      stroke: 0x1f3c88,
-      strokeThickness: 4,
-      dropShadow: true,
-      dropShadowColor: 0x000000,
-      dropShadowBlur: 4,
-      dropShadowDistance: 2,
-      letterSpacing: 1,
-    })));
-  title.style.fontSize = Math.min(24, Math.max(14, metrics.height * 0.14));
-  title.anchor.set(0.5, 1);
-  title.position.set(metrics.centerX, metrics.y1 - 8);
-  textContainer.addChild(title);
 }
