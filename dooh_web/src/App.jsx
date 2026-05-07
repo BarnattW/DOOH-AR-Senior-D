@@ -6,6 +6,7 @@ import { useGeolocation } from "./hooks/useGeolocation";
 import { useDetectionLoop } from "./hooks/useDetectionLoop";
 import { useMotionGate } from "./hooks/useMotionGate";
 import { usePixiOverlay } from "./hooks/usePixiOverlay";
+import { usePinchZoom } from "./hooks/usePinchZoom";
 import { DetectionOverlay } from "./components/ar/DetectionOverlay";
 import { usePhotoLibrary } from "./hooks/usePhotoLibrary";
 import { isNearLandmark } from "./util/geolocation";
@@ -16,6 +17,7 @@ import PhotoLibrary from "./components/PhotoLibrary";
 import PostcardEditor from "./components/PostcardEditor";
 import StartPanel from "./components/StartPanel";
 import LockOnOverlay from "./components/LockOnOverlay";
+import HelpButton from "./components/HelpButton";
 import TutorialFlow from "./components/onboarding/TutorialFlow";
 import ModelToggle from "./components/ModelToggle";
 import DebugOverlay from "./components/DebugOverlay";
@@ -99,6 +101,15 @@ export default function App() {
     if (f) activeFilterRef.current = f;
   }, [arState, activeFilterId]);
 
+  // ── Pinch-to-zoom ─────────────────────────────────────────────────────────
+  usePinchZoom({
+    targetRef: pixiCanvasRef,
+    zoom,
+    setZoom,
+    zoomCaps,
+    enabled: isRunning,
+  });
+
   // ── PixiJS overlay ────────────────────────────────────────────────────────
   usePixiOverlay({
     canvasRef: pixiCanvasRef,
@@ -165,7 +176,7 @@ export default function App() {
   }, [isOverlayOpen, isRunning, videoRef]);
 
   useDetectionLoop({
-    isRunning: isRunning && !isOverlayOpen,
+    isRunning: isRunning && !isOverlayOpen && !showTutorial,
     session,
     videoRef,
     canvasRef: pixiCanvasRef,
@@ -193,12 +204,15 @@ export default function App() {
             style={{
               transform: !zoomCaps && zoom !== 1 ? `scale(${zoom})` : undefined,
               transformOrigin: "center center",
+              touchAction: "none",
             }}
           />
 
           <DetectionOverlay detections={detections} containerRef={pixiCanvasRef} />
 
           {isRunning && <LockOnOverlay arState={arState} />}
+
+          {isRunning && <HelpButton />}
 
           {/* Optional debug overlay (?debug=1) */}
           <DebugOverlay statsRef={statsRef} model={detectionMode} sessionUrl={session?.url} />
