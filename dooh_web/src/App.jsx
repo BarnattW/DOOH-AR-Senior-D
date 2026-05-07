@@ -138,7 +138,7 @@ export default function App() {
   }, [onDetections]);
 
   useDetectionLoop({
-    isRunning,
+    isRunning: isRunning && !showTutorial,
     session,
     videoRef,
     canvasRef: pixiCanvasRef,
