@@ -6,6 +6,7 @@ import { useGeolocation } from "./hooks/useGeolocation";
 import { useDetectionLoop } from "./hooks/useDetectionLoop";
 import { useMotionGate } from "./hooks/useMotionGate";
 import { usePixiOverlay } from "./hooks/usePixiOverlay";
+import { usePinchZoom } from "./hooks/usePinchZoom";
 import { DetectionOverlay } from "./components/ar/DetectionOverlay";
 import { usePhotoLibrary } from "./hooks/usePhotoLibrary";
 import { isNearLandmark } from "./util/geolocation";
@@ -99,6 +100,15 @@ export default function App() {
     if (f) activeFilterRef.current = f;
   }, [arState, activeFilterId]);
 
+  // ── Pinch-to-zoom ─────────────────────────────────────────────────────────
+  usePinchZoom({
+    targetRef: pixiCanvasRef,
+    zoom,
+    setZoom,
+    zoomCaps,
+    enabled: isRunning,
+  });
+
   // ── PixiJS overlay ────────────────────────────────────────────────────────
   usePixiOverlay({
     canvasRef: pixiCanvasRef,
@@ -180,6 +190,7 @@ export default function App() {
             style={{
               transform: !zoomCaps && zoom !== 1 ? `scale(${zoom})` : undefined,
               transformOrigin: "center center",
+              touchAction: "none",
             }}
           />
 
