@@ -99,6 +99,9 @@ export function useCamera() {
     }
   };
 
+  // State only — no hardware zoom. Use during continuous gestures (pinch).
+  const setZoomImmediate = (level) => setZoomState(Math.max(1, level));
+
   return {
     videoRef,
     streamRef,
@@ -107,6 +110,7 @@ export function useCamera() {
     stopWebcam,
     zoom,
     setZoom,
+    setZoomImmediate,
     zoomCaps,
   };
 }

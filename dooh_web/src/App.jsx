@@ -37,7 +37,7 @@ export default function App() {
   const onDetections = useArStore((s) => s.onDetections);
 
   // ── Camera ────────────────────────────────────────────────────────────────
-  const { videoRef, isRunning, startWebcam, stopWebcam, zoom, setZoom, zoomCaps } = useCamera();
+  const { videoRef, isRunning, startWebcam, stopWebcam, zoom, setZoom, setZoomImmediate, zoomCaps } = useCamera();
   useEffect(() => { startWebcam(); }, []);
 
   // ── Detection: original / strong WS endpoints, or local ONNX ──────────────
@@ -106,6 +106,7 @@ export default function App() {
     targetRef: pixiCanvasRef,
     zoom,
     setZoom,
+    setZoomImmediate,
     zoomCaps,
     enabled: isRunning,
   });
