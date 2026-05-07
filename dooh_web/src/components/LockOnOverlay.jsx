@@ -2,16 +2,18 @@ import { useEffect, useRef, useState } from "react";
 
 const PHASES = [
   { text: "Detecting a build...", delay: 0 },
-  { text: "Hold...", delay: 1200 },
-  { text: "Detected.", delay: 2200 },
+  { text: "Hold...", delay: 1800 },
+  { text: "Detected.", delay: 2800 },
 ];
 
 const CHAR_INTERVAL = 40; // ms per character for typewriter
+const LOST_AUTO_HIDE_MS = 3000;
 
 export default function LockOnOverlay({ arState }) {
   const [phaseIndex, setPhaseIndex] = useState(0);
   const [displayedText, setDisplayedText] = useState("");
   const [showCursor, setShowCursor] = useState(true);
+  const [lostHidden, setLostHidden] = useState(false);
   const timersRef = useRef([]);
 
   // Reset when entering glitching state
@@ -55,13 +57,24 @@ export default function LockOnOverlay({ arState }) {
     return () => clearInterval(interval);
   }, []);
 
+  // Auto-hide "Building lost..." after a few seconds even if state lingers
+  useEffect(() => {
+    if (arState !== "lost") {
+      setLostHidden(false);
+      return;
+    }
+    const t = setTimeout(() => setLostHidden(true), LOST_AUTO_HIDE_MS);
+    return () => clearTimeout(t);
+  }, [arState]);
+
   if (arState !== "glitching" && arState !== "lost") return null;
+  if (arState === "lost" && lostHidden) return null;
 
   return (
-    <div className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center">
-      <div className="rounded-lg border border-green-500/30 bg-black/60 px-6 py-4 backdrop-blur-sm">
+    <div className="pointer-events-none absolute inset-x-0 bottom-0 z-30 flex justify-center" style={{ bottom: "calc(env(safe-area-inset-bottom) + 10rem)" }}>
+      <div className="rounded-lg border border-green-500/30 bg-black/60 px-6 py-1.5 backdrop-blur-sm">
         <span
-          className="font-mono text-lg font-bold tracking-wider"
+          className="font-mono text-lg font-light tracking-wider"
           style={{
             color: arState === "lost" ? "#ff4444" : "#00ff88",
             textShadow:

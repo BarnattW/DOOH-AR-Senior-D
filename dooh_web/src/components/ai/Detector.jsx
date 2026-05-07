@@ -10,18 +10,24 @@ export const MODEL_URLS = {
   strong: STRONG_WS_URL || DEFAULT_WS_URL?.replace(/\/ws$/, "/ws_strong"),
 };
 
+let _captureCanvas = null;
+let _captureCtx = null;
+
 async function frameToJpegBlob(imageElement, quality = 0.7) {
   const iw = imageElement.videoWidth || imageElement.width;
   const ih = imageElement.videoHeight || imageElement.height;
 
-  const canvas = document.createElement("canvas");
-  const ctx = canvas.getContext("2d");
-  canvas.width = iw;
-  canvas.height = ih;
-  ctx.drawImage(imageElement, 0, 0, iw, ih);
+  if (!_captureCanvas) {
+    _captureCanvas = document.createElement("canvas");
+    _captureCtx = _captureCanvas.getContext("2d");
+  }
+  if (_captureCanvas.width !== iw) _captureCanvas.width = iw;
+  if (_captureCanvas.height !== ih) _captureCanvas.height = ih;
+
+  _captureCtx.drawImage(imageElement, 0, 0, iw, ih);
 
   return await new Promise((resolve) => {
-    canvas.toBlob((blob) => resolve(blob), "image/jpeg", quality);
+    _captureCanvas.toBlob((blob) => resolve(blob), "image/jpeg", quality);
   });
 }
 
