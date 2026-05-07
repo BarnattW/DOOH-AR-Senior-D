@@ -129,8 +129,8 @@ function drawPostmark(ctx, cx, cy, r, date) {
   ctx.restore();
 }
 
-// ── Shared back-panel renderer (used by all 3 templates) ─────────────────────
-function drawBackPanel(ctx, panelX, panelW, building, date, bgColor = "#fdf9f3") {
+// ── Shared back-panel renderer (used by Classic Split) ───────────────────────
+function drawBackPanel(ctx, panelX, panelW, building, date, filterLabel, bgColor = "#fdf9f3") {
   ctx.fillStyle = bgColor;
   ctx.fillRect(panelX, 0, panelW, H);
 
@@ -145,8 +145,7 @@ function drawBackPanel(ctx, panelX, panelW, building, date, bgColor = "#fdf9f3")
   drawPostmark(ctx, pmCX, pmCY, 28, date);
 
   ctx.font = "600 8px DM Sans, sans-serif";
-  ctx.fillStyle = "#c0b4a8";
-  ctx.textAlign = "center";
+  ctx.fillStyle = "#c0b4a8"; ctx.textAlign = "center";
   ctx.fillText("— POSTCARD —", panelX + panelW / 2, pmCY + 4);
 
   const ruleY = stY + stH + 14;
@@ -154,26 +153,97 @@ function drawBackPanel(ctx, panelX, panelW, building, date, bgColor = "#fdf9f3")
 
   const colPad = panelX + pad;
   const divX   = panelX + panelW * 0.52;
-  const colW   = divX - colPad - 12;
+  const colW   = divX - colPad - 14;
 
-  let ty = ruleY + 44;
+  // ── Left column ───────────────────────────────────────────────────────────
+  let ty = ruleY + 38;
+
   if (building) {
-    const bFont = "800 20px Syne, sans-serif";
+    const bFont = "800 24px Syne, sans-serif";
     const bLines = getWrappedLines(ctx, building, bFont, colW);
     ctx.font = bFont; ctx.fillStyle = "#2a2420"; ctx.textAlign = "left";
-    for (const l of bLines) { ctx.fillText(l, colPad, ty); ty += 28; }
-    ty += 8;
+    for (const l of bLines) { ctx.fillText(l, colPad, ty); ty += 30; }
+    ty += 6;
   }
 
   ctx.font = "500 11px DM Sans, sans-serif";
   ctx.fillStyle = "#b0a090"; ctx.textAlign = "left";
-  ctx.fillText("New York City", colPad, ty);
+  ctx.fillText("New York City, NY", colPad, ty); ty += 18;
   ctx.fillText(
     date.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }).toUpperCase(),
-    colPad, ty + 18
-  );
+    colPad, ty
+  ); ty += 14;
 
+  if (filterLabel) {
+    ctx.font = "400 15px Caveat, cursive";
+    ctx.fillStyle = "rgba(175,50,30,0.65)";
+    ctx.fillText("✶  " + filterLabel + " filter", colPad, ty + 14);
+    ty += 28;
+  }
+
+  ty += 16;
+  hRule(ctx, colPad, ty, colW, "#e4dcd4");
+  ty += 16;
+
+  ctx.font = "500 9px DM Sans, sans-serif";
+  ctx.fillStyle = "#c0b8ae"; ctx.textAlign = "left";
+  ctx.fillText("40°44′N  73°59′W  ·  NEW YORK CITY", colPad, ty);
+  ty += 22;
+
+  hRule(ctx, colPad, ty, colW, "#e4dcd4");
+  ty += 18;
+
+  ctx.font = "600 8px DM Sans, sans-serif";
+  ctx.fillStyle = "#b8b0a8"; ctx.textAlign = "left";
+  ctx.fillText("M E S S A G E", colPad, ty);
+  ty += 16;
+
+  for (let i = 0; i < 9; i++) {
+    hRule(ctx, colPad, ty + i * 34, colW, "#ddd5cc");
+  }
+  ty += 8 * 34 + 24;
+
+  hRule(ctx, colPad, ty, colW, "#e4dcd4");
+  ty += 22;
+
+  ctx.font = "600 8px DM Sans, sans-serif";
+  ctx.fillStyle = "#c8c0b4"; ctx.textAlign = "left";
+  ctx.fillText("G R E E T I N G S  F R O M", colPad, ty);
+  ty += 24;
+  ctx.font = "800 26px Syne, sans-serif";
+  ctx.fillStyle = "#d4ccc4";
+  ctx.fillText("NEW YORK", colPad, ty);
+
+  ctx.font = "500 8px DM Sans, sans-serif";
+  ctx.fillStyle = "#c8c0b8"; ctx.textAlign = "left";
+  ctx.fillText("DOOH AR  ·  NYC  ·  " + date.getFullYear(), colPad, H - 22);
+
+  // ── Vertical divider ──────────────────────────────────────────────────────
   vRule(ctx, divX, ruleY + 14, H - 20);
+
+  // ── Right column: address ─────────────────────────────────────────────────
+  const rightX = divX + 14;
+  const rightW = panelX + panelW - rightX - pad;
+  let ry = ruleY + 30;
+
+  ctx.font = "600 8px DM Sans, sans-serif";
+  ctx.fillStyle = "#c0b4a8"; ctx.textAlign = "left";
+  ctx.fillText("A D D R E S S", rightX, ry);
+  ry += 22;
+
+  ctx.font = "700 10px DM Sans, sans-serif";
+  ctx.fillStyle = "#a09088";
+  ctx.fillText("TO :", rightX, ry);
+  ry += 30;
+
+  const fields = ["NAME", "STREET", "CITY", "STATE / ZIP"];
+  for (const field of fields) {
+    ctx.font = "500 7px DM Sans, sans-serif";
+    ctx.fillStyle = "#c8bcb0"; ctx.textAlign = "left";
+    ctx.fillText(field, rightX, ry - 4);
+    hRule(ctx, rightX, ry, rightW, "#d0c8c0");
+    ry += 52;
+  }
 
   ctx.font = "600 9px DM Sans, sans-serif";
   ctx.fillStyle = "#c8bca8"; ctx.textAlign = "center";
@@ -181,7 +251,7 @@ function drawBackPanel(ctx, panelX, panelW, building, date, bgColor = "#fdf9f3")
 }
 
 // ── Template A: Classic Split ─────────────────────────────────────────────────
-function drawSplit(ctx, img, building, date, transform) {
+function drawSplit(ctx, img, building, date, transform, filterLabel) {
   const splitX = 696;
   drawCoverCropped(ctx, img, 0, 0, splitX, H, transform);
 
@@ -190,8 +260,7 @@ function drawSplit(ctx, img, building, date, transform) {
     g.addColorStop(0, "rgba(0,0,0,0)"); g.addColorStop(1, "rgba(0,0,0,0.45)");
     ctx.fillStyle = g; ctx.fillRect(0, H - 90, splitX, 90);
     ctx.font = "400 18px Caveat, cursive";
-    ctx.fillStyle = "rgba(255,255,255,0.85)";
-    ctx.textAlign = "left";
+    ctx.fillStyle = "rgba(255,255,255,0.85)"; ctx.textAlign = "left";
     ctx.shadowColor = "rgba(0,0,0,0.3)"; ctx.shadowBlur = 4;
     ctx.fillText(building, 18, H - 16);
     ctx.shadowBlur = 0;
@@ -200,11 +269,11 @@ function drawSplit(ctx, img, building, date, transform) {
   ctx.strokeStyle = "#e0d8cc"; ctx.lineWidth = 1;
   ctx.beginPath(); ctx.moveTo(splitX, 0); ctx.lineTo(splitX, H); ctx.stroke();
 
-  drawBackPanel(ctx, splitX, W - splitX, building, date, "#fdf9f3");
+  drawBackPanel(ctx, splitX, W - splitX, building, date, filterLabel, "#fdf9f3");
 }
 
 // ── Template B: Strip ─────────────────────────────────────────────────────────
-function drawStrip(ctx, img, building, date, transform) {
+function drawStrip(ctx, img, building, date, transform, filterLabel) {
   const photoH = 520;
   drawCoverCropped(ctx, img, 0, 0, W, photoH, transform);
 
@@ -213,8 +282,7 @@ function drawStrip(ctx, img, building, date, transform) {
     g.addColorStop(0, "rgba(0,0,0,0)"); g.addColorStop(1, "rgba(0,0,0,0.45)");
     ctx.fillStyle = g; ctx.fillRect(0, photoH - 90, W, 90);
     ctx.font = "400 18px Caveat, cursive";
-    ctx.fillStyle = "rgba(255,255,255,0.85)";
-    ctx.textAlign = "left";
+    ctx.fillStyle = "rgba(255,255,255,0.85)"; ctx.textAlign = "left";
     ctx.shadowColor = "rgba(0,0,0,0.3)"; ctx.shadowBlur = 4;
     ctx.fillText(building, 20, photoH - 14);
     ctx.shadowBlur = 0;
@@ -231,7 +299,6 @@ function drawStrip(ctx, img, building, date, transform) {
   const pmCY = stY + stH / 2;
 
   ctx.fillStyle = "#fdf9f3"; ctx.fillRect(0, photoH, W, H - photoH);
-
   drawStamp(ctx, stX, stY, stW, stH);
   drawPostmark(ctx, pmCX, pmCY, 26, date);
 
@@ -239,29 +306,76 @@ function drawStrip(ctx, img, building, date, transform) {
   ctx.fillStyle = "#c0b4a8"; ctx.textAlign = "center";
   ctx.fillText("— POSTCARD —", W / 2, pmCY + 4);
 
-  hRule(ctx, pad, stY + stH + 10, W - pad * 2);
+  const ruleY = stY + stH + 10;
+  hRule(ctx, pad, ruleY, W - pad * 2);
 
-  const divX = W * 0.52;
+  const divX   = W * 0.52;
   const colPad = pad;
-  const colW = divX - colPad - 12;
-  let ty = stY + stH + 38;
+  const colW   = divX - colPad - 12;
+  let ty = ruleY + 32;
 
   if (building) {
-    const bFont = "800 18px Syne, sans-serif";
+    const bFont = "800 20px Syne, sans-serif";
     const bLines = getWrappedLines(ctx, building, bFont, colW);
     ctx.font = bFont; ctx.fillStyle = "#2a2420"; ctx.textAlign = "left";
-    for (const l of bLines) { ctx.fillText(l, colPad, ty); ty += 25; }
-    ty += 6;
+    for (const l of bLines) { ctx.fillText(l, colPad, ty); ty += 26; }
+    ty += 4;
   }
 
   ctx.font = "500 10px DM Sans, sans-serif";
   ctx.fillStyle = "#b0a090"; ctx.textAlign = "left";
-  ctx.fillText("New York City  ·  " +
-    date.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }).toUpperCase(),
+  ctx.fillText(
+    "New York City, NY  ·  " +
+    date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }).toUpperCase(),
     colPad, ty
-  );
+  ); ty += 16;
 
-  vRule(ctx, divX, stY + stH + 10, H - 12);
+  if (filterLabel) {
+    ctx.font = "400 14px Caveat, cursive";
+    ctx.fillStyle = "rgba(175,50,30,0.65)";
+    ctx.fillText("✶  " + filterLabel + " filter", colPad, ty + 10);
+    ty += 22;
+  }
+
+  ty += 10;
+  hRule(ctx, colPad, ty, colW, "#e4dcd4");
+  ty += 14;
+
+  ctx.font = "500 9px DM Sans, sans-serif";
+  ctx.fillStyle = "#c0b8ae";
+  ctx.fillText("40°44′N  73°59′W  ·  NEW YORK CITY", colPad, ty);
+  ty += 18;
+
+  hRule(ctx, colPad, ty, colW, "#e4dcd4");
+  ty += 14;
+
+  ctx.font = "600 8px DM Sans, sans-serif";
+  ctx.fillStyle = "#b8b0a8";
+  ctx.fillText("M E S S A G E", colPad, ty);
+  ty += 14;
+
+  const linesAvail = Math.floor((H - 18 - ty) / 28);
+  for (let i = 0; i < Math.min(linesAvail, 3); i++) {
+    hRule(ctx, colPad, ty + i * 28, colW, "#ddd5cc");
+  }
+
+  // Right column
+  const rightX = divX + 14;
+  const rightW = W - rightX - pad;
+  let ry = ruleY + 28;
+
+  ctx.font = "700 10px DM Sans, sans-serif";
+  ctx.fillStyle = "#a09088"; ctx.textAlign = "left";
+  ctx.fillText("TO :", rightX, ry); ry += 28;
+
+  const stripFields = ["NAME", "STREET", "CITY / STATE / ZIP"];
+  for (const field of stripFields) {
+    ctx.font = "500 7px DM Sans, sans-serif";
+    ctx.fillStyle = "#c8bcb0";
+    ctx.fillText(field, rightX, ry - 4);
+    hRule(ctx, rightX, ry, rightW, "#d0c8c0");
+    ry += 38;
+  }
 
   ctx.font = "600 9px DM Sans, sans-serif";
   ctx.fillStyle = "#c8bca8"; ctx.textAlign = "center";
@@ -269,9 +383,9 @@ function drawStrip(ctx, img, building, date, transform) {
 }
 
 // ── Template C: Border ────────────────────────────────────────────────────────
-function drawBorder(ctx, img, building, date, transform) {
+function drawBorder(ctx, img, building, date, transform, filterLabel) {
   const framePad = 24;
-  const backH    = 160;
+  const backH    = 180;
   const photoX   = framePad;
   const photoY   = framePad;
   const photoW   = W - framePad * 2;
@@ -299,29 +413,46 @@ function drawBorder(ctx, img, building, date, transform) {
   const divX   = W * 0.52;
   const colPad = framePad + pad;
   const colW   = divX - colPad - 12;
-  let ty = stY + 28;
+  let ty = stY + 24;
 
   if (building) {
-    const bFont = "800 17px Syne, sans-serif";
+    const bFont = "800 19px Syne, sans-serif";
     const bLines = getWrappedLines(ctx, building, bFont, colW);
     ctx.font = bFont; ctx.fillStyle = "#1a1a1a"; ctx.textAlign = "left";
-    for (const l of bLines) { ctx.fillText(l, colPad, ty); ty += 24; }
+    for (const l of bLines) { ctx.fillText(l, colPad, ty); ty += 26; }
     ty += 4;
   }
 
+  const datePart = date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }).toUpperCase();
+  const filterPart = filterLabel ? "  ·  " + filterLabel : "";
   ctx.font = "500 10px DM Sans, sans-serif";
   ctx.fillStyle = "#b0a090"; ctx.textAlign = "left";
-  ctx.fillText(
-    "New York City  ·  " +
-    date.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }).toUpperCase(),
-    colPad, ty
-  );
+  ctx.fillText("New York City, NY  ·  " + datePart + filterPart, colPad, ty);
+  ty += 16;
+
+  ctx.font = "500 9px DM Sans, sans-serif";
+  ctx.fillStyle = "#c0b8ae";
+  ctx.fillText("40°44′N  73°59′W", colPad, ty);
 
   vRule(ctx, divX, photoY + photoH + 14, H - framePad + 4, "#e8e0d8");
 
-  ctx.font = "600 9px DM Sans, sans-serif";
-  ctx.fillStyle = "#c8bca8"; ctx.textAlign = "center";
-  ctx.fillText("NEW YORK, NY 10001", divX + (W - framePad - divX) / 2, stY + stH / 2 + 4);
+  // Right column
+  const rightX = divX + 14;
+  const rightW = W - framePad - rightX;
+  let ry = stY + 24;
+
+  ctx.font = "700 10px DM Sans, sans-serif";
+  ctx.fillStyle = "#a09088"; ctx.textAlign = "left";
+  ctx.fillText("TO :", rightX, ry); ry += 28;
+
+  const borderFields = ["NAME", "STREET", "CITY / STATE / ZIP"];
+  for (const field of borderFields) {
+    ctx.font = "500 7px DM Sans, sans-serif";
+    ctx.fillStyle = "#c8bcb0";
+    ctx.fillText(field, rightX, ry - 4);
+    hRule(ctx, rightX, ry, rightW, "#d0c8c0");
+    ry += 36;
+  }
 }
 
 const DRAW_FNS = { split: drawSplit, strip: drawStrip, border: drawBorder };
@@ -444,8 +575,8 @@ export default function PostcardEditor({ photo, onClose, onSaveToLibrary }) {
     if (!canvas || !img) return;
     canvas.width = W; canvas.height = H;
     const ctx = canvas.getContext("2d");
-    DRAW_FNS[activeTemplate](ctx, img, getBuildingName(selectedBuilding), photo.capturedAt, transform);
-  }, [activeTemplate, selectedBuilding, photo.capturedAt]);
+    DRAW_FNS[activeTemplate](ctx, img, getBuildingName(selectedBuilding), photo.capturedAt, transform, photo.filterLabel);
+  }, [activeTemplate, selectedBuilding, photo.capturedAt, photo.filterLabel]);
 
   const render = useCallback(async () => {
     const canvas = canvasRef.current;
@@ -461,7 +592,7 @@ export default function PostcardEditor({ photo, onClose, onSaveToLibrary }) {
       await new Promise((res) => { img.onload = res; img.onerror = res; });
       imgCacheRef.current = img;
     }
-    DRAW_FNS[activeTemplate](ctx, img, getBuildingName(selectedBuilding), photo.capturedAt, photoTransform);
+    DRAW_FNS[activeTemplate](ctx, img, getBuildingName(selectedBuilding), photo.capturedAt, photoTransform, photo.filterLabel);
     return canvas;
   }, [photo, activeTemplate, selectedBuilding, photoTransform]);
 
