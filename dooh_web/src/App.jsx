@@ -19,6 +19,7 @@ import LockOnOverlay from "./components/LockOnOverlay";
 import TutorialFlow from "./components/onboarding/TutorialFlow";
 import ModelToggle from "./components/ModelToggle";
 import DebugOverlay from "./components/DebugOverlay";
+import LocationStatus from "./components/LocationStatus";
 
 const EMPIRE_STATE = { lat: 40.748817, lng: -73.985428 };
 const RADIUS_M = 5000;
@@ -191,7 +192,7 @@ export default function App() {
 
           <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/55 via-transparent via-35% to-black/75" />
 
-          <div className="pointer-events-none absolute inset-x-0 top-0 z-10 px-4 pt-[max(1rem,env(safe-area-inset-top))] sm:px-5 sm:pt-5">
+          {/* <div className="pointer-events-none absolute inset-x-0 top-0 z-10 px-4 pt-[max(1rem,env(safe-area-inset-top))] sm:px-5 sm:pt-5">
             <div className="flex items-start justify-between gap-3">
               <div className="pointer-events-auto rounded-2xl border border-white/10 bg-black/35 px-4 py-3 backdrop-blur-md">
                 <div className="text-[10px] font-semibold uppercase tracking-[0.3em] text-white/55">
@@ -213,7 +214,7 @@ export default function App() {
                 </div>
               )}
             </div>
-          </div>
+          </div> */}
 
           <div className="absolute inset-x-0 bottom-0 z-10 flex flex-col items-center gap-3">
             {!isRunning && (
