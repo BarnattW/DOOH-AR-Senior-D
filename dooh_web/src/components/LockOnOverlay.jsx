@@ -61,7 +61,7 @@ export default function LockOnOverlay({ arState }) {
     <div className="pointer-events-none absolute inset-x-0 bottom-0 z-30 flex justify-center" style={{ bottom: "calc(env(safe-area-inset-bottom) + 10rem)" }}>
       <div className="rounded-lg border border-green-500/30 bg-black/60 px-6 py-4 backdrop-blur-sm">
         <span
-          className="font-mono text-lg font-bold tracking-wider"
+          className="font-mono text-lg font-light tracking-wider"
           style={{
             color: arState === "lost" ? "#ff4444" : "#00ff88",
             textShadow:
