@@ -23,19 +23,32 @@ export default function CameraControls({
   return (
     <div className={`w-full ${className}`}>
       {isRunning ? (
-        <div className="relative flex items-center justify-center">
-          {/* Zoom out — left of shutter */}
-          <button
-            onClick={() => stepZoom(-1)}
-            disabled={currentStepIndex === 0}
-            aria-label="Zoom out"
-            className="mr-6 flex h-11 w-11 items-center justify-center rounded-full border border-white/15 bg-black/35 text-xl text-white/80 backdrop-blur-md transition-transform duration-100 active:scale-95 disabled:opacity-25"
-          >
-            -
-          </button>
+        <div className="grid grid-cols-3 items-center">
+          {/* Zoom controls — left cluster */}
+          <div className="flex items-center justify-start gap-3">
+            <button
+              onClick={() => stepZoom(-1)}
+              disabled={currentStepIndex === 0}
+              aria-label="Zoom out"
+              className="flex h-11 w-11 items-center justify-center rounded-full border border-white/15 bg-black/35 text-xl text-white/80 backdrop-blur-md transition-transform duration-100 active:scale-95 disabled:opacity-25"
+            >
+              -
+            </button>
+            <button
+              onClick={() => stepZoom(1)}
+              disabled={currentStepIndex === zoomSteps.length - 1}
+              aria-label="Zoom in"
+              className="flex h-11 w-11 items-center justify-center rounded-full border border-white/15 bg-black/35 text-xl text-white/80 backdrop-blur-md transition-transform duration-100 active:scale-95 disabled:opacity-25"
+            >
+              +
+            </button>
+          </div>
 
-          {/* Shutter */}
-          <div className="relative">
+          {/* Shutter with zoom level above */}
+          <div className="flex flex-col items-center gap-2">
+            <div className="whitespace-nowrap rounded-full border border-white/10 bg-black/30 px-3 py-1 text-[11px] font-medium tabular-nums tracking-[0.2em] text-white/70 backdrop-blur-md">
+              {zoomSteps[currentStepIndex].toFixed(zoomSteps[currentStepIndex] % 1 === 0 ? 0 : 1)}X
+            </div>
             <button
               onClick={onCapture}
               aria-label="Take photo"
@@ -43,41 +56,30 @@ export default function CameraControls({
             >
               <span className="block h-[54px] w-[54px] rounded-full bg-white" />
             </button>
-            <div className="absolute left-1/2 top-full mt-2 -translate-x-1/2 whitespace-nowrap rounded-full border border-white/10 bg-black/30 px-3 py-1 text-[11px] font-medium tabular-nums tracking-[0.2em] text-white/70 backdrop-blur-md">
-              {zoomSteps[currentStepIndex].toFixed(zoomSteps[currentStepIndex] % 1 === 0 ? 0 : 1)}X
-            </div>
           </div>
 
-          {/* Zoom in — right of shutter */}
-          <button
-            onClick={() => stepZoom(1)}
-            disabled={currentStepIndex === zoomSteps.length - 1}
-            aria-label="Zoom in"
-            className="ml-6 flex h-11 w-11 items-center justify-center rounded-full border border-white/15 bg-black/35 text-xl text-white/80 backdrop-blur-md transition-transform duration-100 active:scale-95 disabled:opacity-25"
-          >
-            +
-          </button>
-
-          {/* Gallery — bottom right, iPhone-style */}
-          <button
-            onClick={onOpenLibrary}
-            disabled={!lastPhoto}
-            aria-label="Open photo library"
-            className="absolute right-0 flex h-14 w-14 items-center justify-center overflow-hidden rounded-xl border-2 border-white/30 bg-black/35 text-white/80 shadow-lg shadow-black/30 backdrop-blur-md transition-transform duration-100 active:scale-95 disabled:opacity-35"
-          >
-            {lastPhoto ? (
-              <img
-                src={lastPhoto.url}
-                alt=""
-                className="h-full w-full object-cover"
-                draggable="false"
-              />
-            ) : (
-              <span className="flex h-7 w-7 items-center justify-center rounded-md border-2 border-white/70">
-                <span className="h-1.5 w-1.5 rounded-full bg-white/70" />
-              </span>
-            )}
-          </button>
+          {/* Gallery — right cluster */}
+          <div className="flex items-center justify-end">
+            <button
+              onClick={onOpenLibrary}
+              disabled={!lastPhoto}
+              aria-label="Open photo library"
+              className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-xl border-2 border-white/30 bg-black/35 text-white/80 shadow-lg shadow-black/30 backdrop-blur-md transition-transform duration-100 active:scale-95 disabled:opacity-35"
+            >
+              {lastPhoto ? (
+                <img
+                  src={lastPhoto.url}
+                  alt=""
+                  className="h-full w-full object-cover"
+                  draggable="false"
+                />
+              ) : (
+                <span className="flex h-7 w-7 items-center justify-center rounded-md border-2 border-white/70">
+                  <span className="h-1.5 w-1.5 rounded-full bg-white/70" />
+                </span>
+              )}
+            </button>
+          </div>
         </div>
       ) : (
         <div className="flex justify-center">

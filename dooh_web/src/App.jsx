@@ -21,6 +21,7 @@ import TutorialFlow from "./components/onboarding/TutorialFlow";
 import ModelToggle from "./components/ModelToggle";
 import DebugOverlay from "./components/DebugOverlay";
 import LocationStatus from "./components/LocationStatus";
+import UnlockBanner from "./components/UnlockBanner";
 
 const EMPIRE_STATE = { lat: 40.748817, lng: -73.985428 };
 const RADIUS_M = 5000;
@@ -187,6 +188,8 @@ export default function App() {
           <DetectionOverlay detections={detections} containerRef={pixiCanvasRef} />
 
           {isRunning && <LockOnOverlay arState={arState} />}
+
+          {isRunning && <UnlockBanner />}
 
           {isRunning && <HelpButton />}
 

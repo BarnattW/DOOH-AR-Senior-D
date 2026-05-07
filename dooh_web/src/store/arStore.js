@@ -1,8 +1,26 @@
 import { create } from "zustand";
+import { BUILDING_CLASSES } from "../constants/buildings";
 
 const GLITCH_MS = 5000;
 const LOST_MS = 2000;   // tracking → lost after 2s without a positive detection
 const RESET_MS = 8000;  // lost → idle after 8s (long grace period before full reset)
+
+const SCANNED_KEY = "dooh_scanned_buildings";
+
+function loadScanned() {
+  try {
+    const raw = localStorage.getItem(SCANNED_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.filter((l) => BUILDING_CLASSES.includes(l)) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveScanned(list) {
+  try { localStorage.setItem(SCANNED_KEY, JSON.stringify(list)); } catch {}
+}
 
 let glitchTimer = null;
 let lostTimer = null;
@@ -21,14 +39,25 @@ export const useArStore = create((set, get) => ({
   arState: "idle", // "idle" | "glitching" | "tracking" | "lost"
   detections: [],
   currentLabel: null,
+  scannedBuildings: loadScanned(),
+  justUnlocked: false,
 
   onDetections(rawDetections) {
-    const { arState, currentLabel } = get();
+    const { arState, currentLabel, scannedBuildings } = get();
     if (rawDetections.length === 0) {
       return;
     }
 
     const primaryLabel = pickPrimaryLabel(rawDetections);
+
+    // Track first-time scans per building label
+    if (primaryLabel && !scannedBuildings.includes(primaryLabel)) {
+      const next = [...scannedBuildings, primaryLabel];
+      saveScanned(next);
+      const justUnlocked = next.length === BUILDING_CLASSES.length;
+      set({ scannedBuildings: next, justUnlocked: justUnlocked || get().justUnlocked });
+    }
+
     set({ detections: rawDetections });
 
     // Slide the lost timer — if no fresh detection within LOST_MS, go to "lost"
@@ -82,5 +111,14 @@ export const useArStore = create((set, get) => ({
     lostTimer = null;
     resetTimer = null;
     set({ arState: "idle", detections: [], currentLabel: null });
+  },
+
+  acknowledgeUnlock() {
+    set({ justUnlocked: false });
+  },
+
+  resetScannedBuildings() {
+    saveScanned([]);
+    set({ scannedBuildings: [], justUnlocked: false });
   },
 }));
