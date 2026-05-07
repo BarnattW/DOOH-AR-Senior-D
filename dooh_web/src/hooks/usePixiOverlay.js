@@ -116,6 +116,14 @@ export function usePixiOverlay({ canvasRef: containerRef, videoRef, isRunning, l
       let velocity = { dx1: 0, dy1: 0, dx2: 0, dy2: 0 };
       let extrapolatedBox = null;
 
+      // Fade-in state — replays whenever the active (non-glitch) filter (re)appears
+      // or when the primary detected building label changes (so swapping buildings
+      // inside the `unique` filter also re-fades).
+      const FADE_IN_MS = 600;
+      let prevFilterId = null;
+      let prevLabel = null;
+      let fadeStart = 0;
+
       app.ticker.add(() => {
         const time = app.ticker.lastTime / 1000;
         const detections = lastDetectionsRef.current;
@@ -198,6 +206,31 @@ export function usePixiOverlay({ canvasRef: containerRef, videoRef, isRunning, l
         const renderContext = filter?.id
           ? (renderCacheRef.current[filter.id] ??= { objects: new Map() })
           : null;
+
+        // Restart fade-in when the active filter changes (e.g. glitch → real filter)
+        // or when the primary building label changes (handles `unique` sub-filter swaps).
+        const primaryLabel = renderDetections[0]?.label ?? null;
+        const filterChanged = filter?.id !== prevFilterId;
+        const labelChanged = primaryLabel && primaryLabel !== prevLabel;
+        if (filterChanged || labelChanged) {
+          if (filter?.id && filter.id !== 'glitch') {
+            fadeStart = performance.now();
+          } else {
+            fadeStart = 0;
+          }
+          prevFilterId = filter?.id ?? null;
+          if (primaryLabel) prevLabel = primaryLabel;
+        }
+
+        let fadeAlpha = 1;
+        if (filter?.id && filter.id !== 'glitch' && fadeStart > 0) {
+          const elapsed = performance.now() - fadeStart;
+          fadeAlpha = Math.min(1, Math.max(0, elapsed / FADE_IN_MS));
+        }
+        scene3d.alpha = fadeAlpha;
+        textContainer.alpha = fadeAlpha;
+        decorGfx.alpha = fadeAlpha;
+        occlusionMaskGfx.alpha = fadeAlpha;
 
         if (filter.draw3d && renderDetections.length > 0) {
           filter.draw3d(scene3d, renderDetections, time, app.screen, renderContext);
