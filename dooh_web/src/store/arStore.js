@@ -8,16 +8,27 @@ let glitchTimer = null;
 let lostTimer = null;
 let resetTimer = null;
 
+function pickPrimaryLabel(detections) {
+  let best = null;
+  for (const d of detections) {
+    if (!d?.label) continue;
+    if (!best || (d.confidence ?? 0) > (best.confidence ?? 0)) best = d;
+  }
+  return best?.label ?? null;
+}
+
 export const useArStore = create((set, get) => ({
   arState: "idle", // "idle" | "glitching" | "tracking" | "lost"
   detections: [],
+  currentLabel: null,
 
   onDetections(rawDetections) {
-    const { arState } = get();
+    const { arState, currentLabel } = get();
     if (rawDetections.length === 0) {
       return;
     }
 
+    const primaryLabel = pickPrimaryLabel(rawDetections);
     set({ detections: rawDetections });
 
     // Slide the lost timer — if no fresh detection within LOST_MS, go to "lost"
@@ -30,26 +41,37 @@ export const useArStore = create((set, get) => ({
         clearTimeout(resetTimer);
         resetTimer = setTimeout(() => {
           resetTimer = null;
-          set({ arState: "idle", detections: [] });
+          set({ arState: "idle", detections: [], currentLabel: null });
         }, RESET_MS);
       }
     }, LOST_MS);
 
-    if (arState === "idle") {
-      // Fresh acquisition — play glitch lock-on
+    const startGlitch = () => {
       clearTimeout(glitchTimer);
-      set({ arState: "glitching" });
+      set({ arState: "glitching", currentLabel: primaryLabel });
       glitchTimer = setTimeout(() => {
         glitchTimer = null;
         set({ arState: "tracking" });
       }, GLITCH_MS);
+    };
+
+    if (arState === "idle") {
+      // Fresh acquisition — play glitch lock-on
+      startGlitch();
     } else if (arState === "lost") {
-      // Re-acquired after brief loss — snap back without re-glitching
+      // Re-acquired — re-glitch if it's a different building, else snap back
       clearTimeout(resetTimer);
       resetTimer = null;
-      set({ arState: "tracking" });
+      if (primaryLabel && primaryLabel !== currentLabel) {
+        startGlitch();
+      } else {
+        set({ arState: "tracking" });
+      }
+    } else if (arState === "tracking" && primaryLabel && primaryLabel !== currentLabel) {
+      // New building swapped in mid-tracking — replay detecting effect
+      startGlitch();
     }
-    // "glitching" or "tracking": just update the box, stay in current state
+    // "glitching" or same-building "tracking": just update the box
   },
 
   reset() {
@@ -59,6 +81,6 @@ export const useArStore = create((set, get) => ({
     glitchTimer = null;
     lostTimer = null;
     resetTimer = null;
-    set({ arState: "idle", detections: [] });
+    set({ arState: "idle", detections: [], currentLabel: null });
   },
 }));
