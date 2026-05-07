@@ -147,21 +147,6 @@ export default function App() {
     prevFilterIdRef.current = activeFilterId;
   }, [activeFilterId, tutorialStep, skipTutorial]);
 
-  // ── Detection loop ────────────────────────────────────────────────────────
-  const handleDetections = useCallback((formatted) => {
-    lastDetectionsRef.current = formatted; // direct write — no render cycle, Pixi reads immediately
-    onDetections(formatted);               // store for arState machine + React UI
-  }, [onDetections]);
-
-  useDetectionLoop({
-    isRunning,
-    session,
-    videoRef,
-    canvasRef: pixiCanvasRef,
-    detect,
-    onDetections: handleDetections,
-  });
-
   const {
     photos,
     latestPhoto,
@@ -185,6 +170,34 @@ export default function App() {
       locationLabel: near ? "New York City, NY" : null,
     });
   }, [capturePhoto, activeFilterId, near]);
+
+  // ── Detection loop ────────────────────────────────────────────────────────
+  const handleDetections = useCallback((formatted) => {
+    lastDetectionsRef.current = formatted; // direct write — no render cycle, Pixi reads immediately
+    onDetections(formatted);               // store for arState machine + React UI
+  }, [onDetections]);
+
+  // Pause camera and halt detection while gallery or postcard editor is open
+  const isOverlayOpen = isLibraryOpen || !!postcardPhoto;
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !isRunning) return;
+    if (isOverlayOpen) {
+      video.pause();
+    } else {
+      video.play().catch(() => {});
+    }
+  }, [isOverlayOpen, isRunning, videoRef]);
+
+  useDetectionLoop({
+    isRunning: isRunning && !isOverlayOpen,
+    session,
+    videoRef,
+    canvasRef: pixiCanvasRef,
+    detect,
+    onDetections: handleDetections,
+  });
 
   const canStart = !isRunning;
 
