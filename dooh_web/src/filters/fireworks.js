@@ -1,8 +1,7 @@
-import * as PIXI from 'pixi.js';
 export const id = 'fireworks';
 export const label = 'Fireworks';
 
-export function draw(gfx, textContainer, detections, time) {
+export function draw(gfx, _textContainer, detections, time) {
   const det = detections[0];
   const { x1, y1, x2, y2 } = det.box;
   const cx = (x1 + x2) / 2;
@@ -58,20 +57,4 @@ export function draw(gfx, textContainer, detections, time) {
     }
   });
 
-  const title = new PIXI.Text('FIREWORKS', new PIXI.TextStyle({
-    fontFamily: 'Arial',
-    fontWeight: 'bold',
-    fontSize: Math.min(24, Math.max(14, h * 0.14)),
-    fill: 0xfff0a8,
-    stroke: 0x000000,
-    strokeThickness: 4,
-    dropShadow: true,
-    dropShadowColor: 0x3b1f66,
-    dropShadowBlur: 4,
-    dropShadowDistance: 2,
-    letterSpacing: 2,
-  }));
-  title.anchor.set(0.5, 1);
-  title.position.set(cx, y1 - 8);
-  textContainer.addChild(title);
 }
