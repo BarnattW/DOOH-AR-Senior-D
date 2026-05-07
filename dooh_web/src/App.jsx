@@ -203,7 +203,7 @@ export default function App() {
           {isRunning && <HelpButton />}
 
           {/* Optional debug overlay (?debug=1) */}
-          <DebugOverlay statsRef={statsRef} model={detectionMode} sessionUrl={session?.url} />
+          <DebugOverlay statsRef={statsRef} model={detectionMode} sessionUrl={session?.url} isMovingRef={isMovingRef} />
 
           <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/55 via-transparent via-35% to-black/75" />
 

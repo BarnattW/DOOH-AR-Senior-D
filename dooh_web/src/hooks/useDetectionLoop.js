@@ -4,7 +4,7 @@ import { BUILDING_CLASSES } from "../constants/buildings";
 const MIN_CONFIDENCE = 0.55;
 const MAX_DETECTIONS = 1;
 const DETECTION_HOLD_MS = 150;
-const DETECTION_MAX_AGE_MS = 2500;
+const DETECTION_MAX_AGE_MS = 800;
 
 const supportsRVFC = "requestVideoFrameCallback" in HTMLVideoElement.prototype;
 
@@ -27,6 +27,12 @@ export function useDetectionLoop({ isRunning, session, videoRef, canvasRef, dete
       }
 
       if (isMovingRef?.current) {
+        if (lastStableDetectionsRef.current.length > 0) {
+          clearTimeout(staleTimer);
+          lastStableDetectionsRef.current = [];
+          lastDetectionAtRef.current = 0;
+          onDetections([]);
+        }
         scheduleNext();
         return;
       }
