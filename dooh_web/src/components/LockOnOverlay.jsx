@@ -58,7 +58,7 @@ export default function LockOnOverlay({ arState }) {
   if (arState !== "glitching" && arState !== "lost") return null;
 
   return (
-    <div className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center">
+    <div className="pointer-events-none absolute inset-x-0 bottom-0 z-30 flex justify-center" style={{ bottom: "calc(env(safe-area-inset-bottom) + 10rem)" }}>
       <div className="rounded-lg border border-green-500/30 bg-black/60 px-6 py-4 backdrop-blur-sm">
         <span
           className="font-mono text-lg font-bold tracking-wider"
