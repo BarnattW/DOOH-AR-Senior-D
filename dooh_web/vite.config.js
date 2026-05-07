@@ -6,7 +6,7 @@ import mkcert from "vite-plugin-mkcert"
 export default defineConfig({
   plugins: [react(), mkcert()],
   optimizeDeps: {
-    include: ["onnxruntime-web"],
+    exclude: ["onnxruntime-web"],
   },
   server: {
     port: 8000,
