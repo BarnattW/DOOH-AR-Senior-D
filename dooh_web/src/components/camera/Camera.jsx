@@ -4,7 +4,7 @@ export function useCamera() {
   const videoRef = useRef(null);
   const streamRef = useRef(null);
   const [isRunning, setIsRunning] = useState(false);
-  const [zoom, setZoomState] = useState(1);
+  const [zoom, setZoomState] = useState(3);
   // { min, max } if hardware zoom is supported, null otherwise
   const [zoomCaps, setZoomCaps] = useState(null);
 
@@ -31,12 +31,18 @@ export function useCamera() {
       });
       streamRef.current = stream;
 
-      // Detect hardware zoom capability
+      // Detect hardware zoom capability and apply 3x default
       const videoTrack = stream.getVideoTracks()[0];
       if (videoTrack && videoTrack.getCapabilities) {
         const caps = videoTrack.getCapabilities();
         if (caps.zoom) {
           setZoomCaps({ min: caps.zoom.min ?? 1, max: caps.zoom.max ?? 1 });
+          const hwLevel = Math.min(3, caps.zoom.max ?? 3);
+          try {
+            await videoTrack.applyConstraints({ advanced: [{ zoom: hwLevel }] });
+          } catch (e) {
+            console.warn("Could not apply initial hardware zoom:", e);
+          }
         } else {
           setZoomCaps(null);
         }
@@ -68,7 +74,7 @@ export function useCamera() {
 
   const stopWebcam = () => {
     setIsRunning(false);
-    setZoomState(1);
+    setZoomState(3);
     setZoomCaps(null);
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((t) => t.stop());
