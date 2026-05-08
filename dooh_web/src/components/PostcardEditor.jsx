@@ -222,7 +222,7 @@ function drawBackPanel(ctx, panelX, panelW, building, date) {
   ctx.fillStyle = PC.caption; ctx.textAlign = "left";
   ctx.fillText("G R E E T I N G S  F R O M", colPad, greetLabelY);
 
-  ctx.font = "800 26px Syne, sans-serif";
+  ctx.font = "800 16px Syne, sans-serif";
   ctx.fillStyle = PC.decorBig;
   ctx.fillText("NEW YORK", colPad, nyLabelY);
 
@@ -412,7 +412,7 @@ function drawBorder(ctx, img, building, date, transform) {
   const stW  = 62, stH = 72;
   const stX  = W - framePad - pad - stW;
   const stY  = backY + 16;
-  const pmCX = framePad + pad + 30;
+  const pmCX = stX - 38;
   const pmCY = stY + stH / 2;
 
   drawStamp(ctx, stX, stY, stW, stH);
@@ -420,7 +420,7 @@ function drawBorder(ctx, img, building, date, transform) {
 
   ctx.font = "600 8px DM Sans, sans-serif";
   ctx.fillStyle = PC.caption; ctx.textAlign = "center";
-  ctx.fillText("— POSTCARD —", W / 2, pmCY + 4);
+  ctx.fillText("— POSTCARD —", W / 2, backY + 14);
 
   const divX   = W * 0.52;
   const colPad = framePad + pad;
