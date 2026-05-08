@@ -1,12 +1,12 @@
 import * as kingKong from './kingKong';
 import * as fireworks from './fireworks';
-import * as movingAmericanFlag from './movingAmericanFlag';
+import * as brandLogo from './brandLogo';
 
 export const id = 'unique';
 export const label = 'Unique';
 
 const BUILDING_FILTERS = {
-  'Hudson Yards - The Edge': movingAmericanFlag,
+  'Hudson Yards - The Edge': brandLogo,
   'Empire State Building': kingKong,
   'WTC': fireworks,
 };
