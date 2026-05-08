@@ -8,6 +8,11 @@ html, body {
   overscroll-behavior: none;
 }
 
+canvas {
+  touch-action: none;
+}
+
+
 .ar-grid {
   background-image:
     linear-gradient(rgba(0, 240, 255, 0.04) 1px, transparent 1px),
