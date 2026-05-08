@@ -2,10 +2,13 @@ import { useEffect, useRef, useState } from "react";
 import { BUILDING_URLS } from "../../constants/buildings";
 import { useArStore } from "../../store/arStore";
 
-export function DetectionOverlay({ detections, containerRef }) {
+export function DetectionOverlay({ detections, containerRef, activeFilterId }) {
   const buttonsContainerRef = useRef(null);
   const [buttonPositions, setButtonPositions] = useState([]);
   const arState = useArStore((s) => s.arState);
+
+  // Don't show Learn More button for brandLogo filter
+  const showButton = activeFilterId !== 'brandLogo';
 
   useEffect(() => {
     if (!containerRef?.current || !buttonsContainerRef.current) return;
@@ -60,7 +63,7 @@ export function DetectionOverlay({ detections, containerRef }) {
       className="absolute inset-0 w-full h-full"
       style={{ pointerEvents: "auto", overflow: "visible" }}
     >
-      {buttonPositions.map((btn, idx) => (
+      {showButton && buttonPositions.map((btn, idx) => (
         <button
           key={`${btn.label}-${idx}`}
           onClick={(e) => {

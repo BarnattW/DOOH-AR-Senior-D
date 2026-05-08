@@ -196,7 +196,7 @@ export default function App() {
             }}
           />
 
-          <DetectionOverlay detections={detections} containerRef={pixiCanvasRef} />
+          <DetectionOverlay detections={detections} containerRef={pixiCanvasRef} activeFilterId={activeFilterId} />
 
           {isRunning && <LockOnOverlay arState={arState} />}
 
