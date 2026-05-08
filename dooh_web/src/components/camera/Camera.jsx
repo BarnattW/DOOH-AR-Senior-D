@@ -4,7 +4,7 @@ export function useCamera() {
   const videoRef = useRef(null);
   const streamRef = useRef(null);
   const [isRunning, setIsRunning] = useState(false);
-  const [zoom, setZoomState] = useState(3);
+  const [zoom, setZoomState] = useState(1);
   // { min, max } if hardware zoom is supported, null otherwise
   const [zoomCaps, setZoomCaps] = useState(null);
 
@@ -41,8 +41,6 @@ export function useCamera() {
           setZoomCaps(null);
         }
       }
-
-      setZoomState(3);
 
       const videoEl = videoRef.current;
       if (videoEl) {
