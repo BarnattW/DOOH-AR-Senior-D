@@ -35,6 +35,7 @@ export default function App() {
   const arState      = useArStore((s) => s.arState);
   const detections   = useArStore((s) => s.detections);
   const onDetections = useArStore((s) => s.onDetections);
+  const resetAr      = useArStore((s) => s.reset);
 
   // ── Camera ────────────────────────────────────────────────────────────────
   const { videoRef, isRunning, startWebcam, stopWebcam, zoom, setZoom, setZoomImmediate, zoomCaps } = useCamera();
@@ -163,8 +164,11 @@ export default function App() {
     onDetections(formatted);               // store for arState machine + React UI
   }, [onDetections]);
 
-  // Pause camera and halt detection while gallery or postcard editor is open
+  // Pause camera, halt detection, and reset AR state while gallery or postcard editor is open
   const isOverlayOpen = isLibraryOpen || !!postcardPhoto;
+  useEffect(() => {
+    if (isOverlayOpen) resetAr();
+  }, [isOverlayOpen, resetAr]);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -211,7 +215,7 @@ export default function App() {
 
           <DetectionOverlay detections={detections} containerRef={pixiCanvasRef} activeFilterId={activeFilterId} />
 
-          {isRunning && <LockOnOverlay arState={arState} />}
+          {isRunning && !isOverlayOpen && <LockOnOverlay arState={arState} />}
 
           {isRunning && <HelpButton />}
 
@@ -294,7 +298,7 @@ export default function App() {
           {postcardPhoto && (
             <PostcardEditor
               photo={postcardPhoto}
-              onClose={() => setPostcardPhoto(null)}
+              onClose={() => { setPostcardPhoto(null); openLibrary(); }}
               onSaveToLibrary={(blob) => {
                 addPhoto(blob, {
                   detectedBuilding: postcardPhoto.detectedBuilding,
