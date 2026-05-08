@@ -56,7 +56,7 @@ export default function HelpButton() {
         onClick={() => setOpen((v) => !v)}
         className="flex h-9 w-9 items-center justify-center rounded-full border border-white/70 bg-transparent text-white/90 transition active:scale-95"
       >
-        <span className="font-serif text-base leading-none">?</span>
+        <span className="text-base leading-none">?</span>
       </button>
     </div>
   );

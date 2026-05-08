@@ -504,8 +504,6 @@ const S = {
   textPrimary: "rgba(255,255,255,0.88)",
   textSec:     "rgba(255,255,255,0.5)",
   textMuted:   "rgba(255,255,255,0.28)",
-  syne:        "'Syne', sans-serif",
-  dm:          "'DM Sans', sans-serif",
 };
 
 // ── Template thumbnail previews ───────────────────────────────────────────────
@@ -756,11 +754,11 @@ export default function PostcardEditor({ photo, onClose, onSaveToLibrary }) {
         <div className="flex flex-col items-center gap-0.5">
           <span
             className="text-[9px] font-bold uppercase tracking-[0.45em]"
-            style={{ color: S.textMuted, fontFamily: S.syne }}
+            style={{ color: S.textMuted }}
           >Postcard Studio</span>
           <span
             className="text-[15px] font-bold leading-none"
-            style={{ color: S.textPrimary, fontFamily: S.syne }}
+            style={{ color: S.textPrimary }}
           >Create</span>
         </div>
 
@@ -774,20 +772,16 @@ export default function PostcardEditor({ photo, onClose, onSaveToLibrary }) {
                 border: libSaved ? "1px solid rgba(100,200,100,0.5)" : `1px solid ${S.borderMed}`,
                 color:  libSaved ? "rgb(110,215,110)" : S.textSec,
                 background: S.surface,
-                fontFamily: S.dm,
               }}
             >{libSaved ? "✓ Saved" : "Library"}</button>
           )}
           <button
             type="button" onClick={handleShare}
             disabled={saving || !previewUrl}
-            className="flex h-9 items-center gap-1.5 rounded-full px-4 text-xs font-bold transition active:scale-95 disabled:opacity-30"
+            className="flex h-9 items-center gap-1.5 rounded-full px-4 text-xs font-bold uppercase tracking-[0.06em] transition active:scale-95 disabled:opacity-30"
             style={{
               background: saving ? "rgba(255,255,255,0.3)" : "rgba(255,255,255,0.92)",
               color: "#000",
-              fontFamily: S.syne,
-              letterSpacing: "0.06em",
-              textTransform: "uppercase",
             }}
           >
             {saving ? "…" : (
@@ -860,7 +854,6 @@ export default function PostcardEditor({ photo, onClose, onSaveToLibrary }) {
                 color: S.textSec,
                 border: `1px solid ${S.border}`,
                 backdropFilter: "blur(8px)",
-                fontFamily: S.dm,
               }}
             >drag to pan · scroll to zoom · {scaleLabel}</div>
           </>
@@ -874,7 +867,7 @@ export default function PostcardEditor({ photo, onClose, onSaveToLibrary }) {
             <div className="flex items-center gap-3">
               <span
                 className="text-[9px] font-bold uppercase tracking-[0.3em]"
-                style={{ color: S.textMuted, fontFamily: S.syne }}
+                style={{ color: S.textMuted }}
               >Zoom</span>
               <button
                 type="button"
@@ -884,7 +877,7 @@ export default function PostcardEditor({ photo, onClose, onSaveToLibrary }) {
               >−</button>
               <span
                 className="min-w-[3rem] text-center text-sm font-bold"
-                style={{ color: S.textPrimary, fontFamily: S.syne }}
+                style={{ color: S.textPrimary }}
               >{scaleLabel}</span>
               <button
                 type="button"
@@ -896,19 +889,17 @@ export default function PostcardEditor({ photo, onClose, onSaveToLibrary }) {
                 type="button"
                 onClick={() => setPhotoTransform({ panX: 0, panY: 0, scale: 1 })}
                 className="ml-auto text-xs transition active:opacity-50"
-                style={{ color: S.textMuted, fontFamily: S.dm }}
+                style={{ color: S.textMuted }}
               >Reset</button>
             </div>
             <button
               type="button"
               onClick={() => setCropMode(false)}
-              className="w-full rounded-xl py-3 text-sm font-bold transition active:scale-[0.98]"
+              className="w-full rounded-xl py-3 text-sm font-bold tracking-[0.05em] transition active:scale-[0.98]"
               style={{
                 background: S.surface,
                 color: S.textPrimary,
                 border: `1px solid ${S.border}`,
-                fontFamily: S.syne,
-                letterSpacing: "0.05em",
               }}
             >Done Cropping</button>
           </div>
@@ -922,11 +913,11 @@ export default function PostcardEditor({ photo, onClose, onSaveToLibrary }) {
               <div>
                 <div
                   className="mb-0.5 text-[9px] font-bold uppercase tracking-[0.35em]"
-                  style={{ color: S.textMuted, fontFamily: S.syne }}
+                  style={{ color: S.textMuted }}
                 >Building</div>
                 <div
                   className="text-sm font-semibold"
-                  style={{ color: buildingLabel ? S.textPrimary : S.textMuted, fontFamily: S.syne }}
+                  style={{ color: buildingLabel ? S.textPrimary : S.textMuted }}
                 >{buildingLabel ?? "None detected"}</div>
               </div>
               <div className="flex items-center gap-2">
@@ -934,13 +925,13 @@ export default function PostcardEditor({ photo, onClose, onSaveToLibrary }) {
                   type="button"
                   onClick={() => setShowBuildingPicker(p => !p)}
                   className="rounded-full px-3 py-1.5 text-xs font-semibold transition active:scale-95"
-                  style={{ border: `1px solid ${S.border}`, color: S.textSec, background: "transparent", fontFamily: S.dm }}
+                  style={{ border: `1px solid ${S.border}`, color: S.textSec, background: "transparent" }}
                 >Change</button>
                 <button
                   type="button"
                   onClick={() => { renderLiveToCanvas(transformRef.current); setCropMode(true); }}
                   className="rounded-full px-3 py-1.5 text-xs font-semibold transition active:scale-95"
-                  style={{ border: `1px solid ${S.border}`, color: S.textSec, background: "transparent", fontFamily: S.dm }}
+                  style={{ border: `1px solid ${S.border}`, color: S.textSec, background: "transparent" }}
                 >Crop</button>
               </div>
             </div>
@@ -960,7 +951,6 @@ export default function PostcardEditor({ photo, onClose, onSaveToLibrary }) {
                         border:     isActive ? `1px solid ${S.borderMed}` : `1px solid ${S.border}`,
                         color:      isActive ? S.textPrimary               : S.textSec,
                         background: isActive ? S.surface                   : "transparent",
-                        fontFamily: S.dm,
                       }}
                     >{key === null ? "None" : BUILDING_DISPLAY[key]}</button>
                   );
@@ -972,7 +962,7 @@ export default function PostcardEditor({ photo, onClose, onSaveToLibrary }) {
             <div className="px-4 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] sm:pb-5">
               <div
                 className="mb-2.5 text-[9px] font-bold uppercase tracking-[0.35em]"
-                style={{ color: S.textMuted, fontFamily: S.syne }}
+                style={{ color: S.textMuted }}
               >Layout</div>
               <div className="flex gap-4">
                 {TEMPLATES.map((t) => (
@@ -985,10 +975,7 @@ export default function PostcardEditor({ photo, onClose, onSaveToLibrary }) {
                     <TemplateThumbnail id={t.id} active={activeTemplate === t.id} />
                     <span
                       className="text-[9px] font-bold uppercase tracking-[0.2em] transition-colors"
-                      style={{
-                        color:      activeTemplate === t.id ? S.textPrimary : S.textMuted,
-                        fontFamily: S.syne,
-                      }}
+                      style={{ color: activeTemplate === t.id ? S.textPrimary : S.textMuted }}
                     >{t.label}</span>
                   </button>
                 ))}
