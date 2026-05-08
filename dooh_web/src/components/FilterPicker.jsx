@@ -46,11 +46,11 @@ export default function FilterPicker({ activeId, onSelect, pulsing = false }) {
           <button
             key={f.id}
             onClick={() => onSelect(f.id)}
-            className={`flex-shrink-0 px-4 py-1.5 rounded-full text-sm font-medium
+            className={`font-syne flex-shrink-0 px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-[0.06em]
               transition-all duration-200 border
               ${activeId === f.id
-                ? 'bg-white text-black border-white scale-105 shadow-lg shadow-white/20'
-                : 'bg-black/50 text-gray-200 border-white/20 hover:bg-white/10 backdrop-blur-sm'
+                ? 'bg-accent text-white border-accent scale-105 shadow-lg shadow-accent/30'
+                : 'bg-black/50 text-white/70 border-white/20 hover:bg-white/10 backdrop-blur-sm'
               }`}
           >
             {f.label}

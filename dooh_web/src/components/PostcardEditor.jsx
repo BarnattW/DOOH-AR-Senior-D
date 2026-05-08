@@ -23,17 +23,17 @@ const H = 800;
 
 // Postcard canvas design tokens — shared across all three layouts
 const PC = {
-  bg:        "#0d0d0d",   // true near-black paper
-  primary:   "#e8e8e8",   // building name — clean white
-  sub:       "#686868",   // city, date, coords
-  label:     "#383838",   // section labels (M E S S A G E, A D D R E S S, field labels)
-  caption:   "#4a4a4a",   // "— POSTCARD —", "GREETINGS FROM", footers
-  ruleSep:   "#242424",   // section separator rules
-  ruleLine:  "#1a1a1a",   // message writing lines
-  divider:   "#202020",   // vertical divider
-  to:        "#888888",   // TO: label
-  fieldRule: "#242424",   // address field underlines
-  decorBig:  "#585858",   // large "NEW YORK" decorative
+  bg:        "#fdf9f3",   // warm cream paper
+  primary:   "#2a2420",   // building name — dark brown
+  sub:       "#b0a090",   // city, date, coords
+  label:     "#b8b0a8",   // section labels (M E S S A G E, A D D R E S S, field labels)
+  caption:   "#c0b4a8",   // "— POSTCARD —", "GREETINGS FROM", footers
+  ruleSep:   "#e4dcd4",   // section separator rules
+  ruleLine:  "#ddd5cc",   // message writing lines
+  divider:   "#e4dcd4",   // vertical divider
+  to:        "#a09088",   // TO: label
+  fieldRule: "#d0c8c0",   // address field underlines
+  decorBig:  "#d4ccc4",   // large "NEW YORK" decorative
 };
 
 let _fontsReady = null;
@@ -403,7 +403,7 @@ function drawBorder(ctx, img, building, date, transform) {
   const photoH   = H - framePad - backH;
   const backY    = photoY + photoH;
 
-  ctx.fillStyle = PC.bg; ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, W, H);
   drawCoverCropped(ctx, img, photoX, photoY, photoW, photoH, transform);
 
   hRule(ctx, framePad, backY + 1, photoW, PC.ruleSep);

@@ -40,7 +40,7 @@ export default function StartPanel({
           type="button"
           onClick={onStart}
           disabled={!canStart}
-          className="h-12 rounded-full bg-white px-6 text-sm font-bold uppercase tracking-[0.22em] text-black transition active:scale-[0.98] disabled:opacity-40"
+          className="font-syne h-12 rounded-full bg-accent px-6 text-sm font-bold uppercase tracking-[0.22em] text-white transition active:scale-[0.98] disabled:opacity-40"
         >
           Start
         </button>
