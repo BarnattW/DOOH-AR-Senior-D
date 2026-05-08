@@ -497,13 +497,10 @@ const DRAW_FNS = { split: drawSplit, strip: drawStrip, border: drawBorder };
 
 // ── Design tokens ─────────────────────────────────────────────────────────────
 const S = {
-  bg:          "#0d0a07",
+  bg:          "#0a0a0a",
   surface:     "rgba(255,255,255,0.04)",
   border:      "rgba(255,255,255,0.08)",
   borderMed:   "rgba(255,255,255,0.14)",
-  accent:      "#b83020",
-  accentMuted: "rgba(175,80,50,0.75)",
-  accentGlow:  "rgba(175,80,50,0.18)",
   textPrimary: "rgba(255,255,255,0.88)",
   textSec:     "rgba(255,255,255,0.5)",
   textMuted:   "rgba(255,255,255,0.28)",
@@ -513,8 +510,8 @@ const S = {
 
 // ── Template thumbnail previews ───────────────────────────────────────────────
 function TemplateThumbnail({ id, active }) {
-  const border = `1.5px solid ${active ? "rgba(184,48,32,0.85)" : "rgba(255,255,255,0.1)"}`;
-  const glow   = active ? "0 0 0 3px rgba(184,48,32,0.2)" : "none";
+  const border = `1.5px solid ${active ? "rgba(255,255,255,0.55)" : "rgba(255,255,255,0.1)"}`;
+  const glow   = active ? "0 0 0 3px rgba(255,255,255,0.08)" : "none";
   const photo  = "linear-gradient(150deg, #7a6450 0%, #3c2a1a 100%)";
   const paper  = "#e8ddd0";
 
@@ -759,7 +756,7 @@ export default function PostcardEditor({ photo, onClose, onSaveToLibrary }) {
         <div className="flex flex-col items-center gap-0.5">
           <span
             className="text-[9px] font-bold uppercase tracking-[0.45em]"
-            style={{ color: S.accentMuted, fontFamily: S.syne }}
+            style={{ color: S.textMuted, fontFamily: S.syne }}
           >Postcard Studio</span>
           <span
             className="text-[15px] font-bold leading-none"
@@ -786,8 +783,8 @@ export default function PostcardEditor({ photo, onClose, onSaveToLibrary }) {
             disabled={saving || !previewUrl}
             className="flex h-9 items-center gap-1.5 rounded-full px-4 text-xs font-bold transition active:scale-95 disabled:opacity-30"
             style={{
-              background: saving ? "rgba(140,35,20,0.7)" : S.accent,
-              color: "#fff",
+              background: saving ? "rgba(255,255,255,0.3)" : "rgba(255,255,255,0.92)",
+              color: "#000",
               fontFamily: S.syne,
               letterSpacing: "0.06em",
               textTransform: "uppercase",
@@ -813,7 +810,7 @@ export default function PostcardEditor({ photo, onClose, onSaveToLibrary }) {
             style={{
               maxHeight: "100%",
               borderRadius: 6,
-              border: "1px solid rgba(90,65,40,0.35)",
+              border: "1px solid rgba(255,255,255,0.1)",
               boxShadow: "0 48px 96px rgba(0,0,0,0.65), 0 16px 40px rgba(0,0,0,0.45), 0 3px 10px rgba(0,0,0,0.35)",
               overflow: "hidden",
             }}
@@ -833,7 +830,7 @@ export default function PostcardEditor({ photo, onClose, onSaveToLibrary }) {
             maxHeight: "100%",
             width: "100%",
             borderRadius: 6,
-            border: "1px solid rgba(90,65,40,0.35)",
+            border: "1px solid rgba(255,255,255,0.1)",
             boxShadow: "0 32px 64px rgba(0,0,0,0.55)",
           }}
         />
@@ -841,7 +838,7 @@ export default function PostcardEditor({ photo, onClose, onSaveToLibrary }) {
         {!previewUrl && !cropMode && (
           <div
             className="h-48 w-full animate-pulse rounded-lg"
-            style={{ background: "rgba(90,65,40,0.12)", border: "1px solid rgba(90,65,40,0.2)" }}
+            style={{ background: S.surface, border: `1px solid ${S.border}` }}
           />
         )}
 
@@ -859,7 +856,7 @@ export default function PostcardEditor({ photo, onClose, onSaveToLibrary }) {
             <div
               className="pointer-events-none absolute bottom-7 left-1/2 -translate-x-1/2 rounded-full px-4 py-1.5 text-xs"
               style={{
-                background: "rgba(13,10,7,0.8)",
+                background: "rgba(0,0,0,0.75)",
                 color: S.textSec,
                 border: `1px solid ${S.border}`,
                 backdropFilter: "blur(8px)",
@@ -925,7 +922,7 @@ export default function PostcardEditor({ photo, onClose, onSaveToLibrary }) {
               <div>
                 <div
                   className="mb-0.5 text-[9px] font-bold uppercase tracking-[0.35em]"
-                  style={{ color: S.accentMuted, fontFamily: S.syne }}
+                  style={{ color: S.textMuted, fontFamily: S.syne }}
                 >Building</div>
                 <div
                   className="text-sm font-semibold"
@@ -960,9 +957,9 @@ export default function PostcardEditor({ photo, onClose, onSaveToLibrary }) {
                       onClick={() => { setSelectedBuilding(key); setShowBuildingPicker(false); }}
                       className="rounded-full px-3 py-1 text-xs font-semibold transition active:scale-95"
                       style={{
-                        border:      isActive ? "1px solid rgba(184,48,32,0.7)" : `1px solid ${S.border}`,
-                        color:       isActive ? "rgba(220,120,90,0.95)"          : S.textSec,
-                        background:  isActive ? S.accentGlow                     : "transparent",
+                        border:     isActive ? `1px solid ${S.borderMed}` : `1px solid ${S.border}`,
+                        color:      isActive ? S.textPrimary               : S.textSec,
+                        background: isActive ? S.surface                   : "transparent",
                         fontFamily: S.dm,
                       }}
                     >{key === null ? "None" : BUILDING_DISPLAY[key]}</button>
@@ -989,7 +986,7 @@ export default function PostcardEditor({ photo, onClose, onSaveToLibrary }) {
                     <span
                       className="text-[9px] font-bold uppercase tracking-[0.2em] transition-colors"
                       style={{
-                        color:      activeTemplate === t.id ? "rgba(220,110,80,0.9)" : S.textMuted,
+                        color:      activeTemplate === t.id ? S.textPrimary : S.textMuted,
                         fontFamily: S.syne,
                       }}
                     >{t.label}</span>

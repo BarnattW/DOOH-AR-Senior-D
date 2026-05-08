@@ -10,9 +10,6 @@ export default {
         syne: ['Syne', 'sans-serif'],
         sans: ['DM Sans', 'sans-serif'],
       },
-      colors: {
-        accent: '#b83020',
-      },
     },
   },
   plugins: [],

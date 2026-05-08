@@ -93,7 +93,7 @@ export default function PhotoLibrary({ photos, onClose, onPostcard }) {
                   type="button"
                   onClick={handleShare}
                   disabled={sharing}
-                  className="font-syne flex items-center gap-1.5 rounded-full bg-accent px-5 py-2 text-xs font-bold uppercase tracking-[0.06em] text-white transition active:scale-95 disabled:opacity-50"
+                  className="font-syne flex items-center gap-1.5 rounded-full bg-white px-5 py-2 text-xs font-bold uppercase tracking-[0.06em] text-black transition active:scale-95 disabled:opacity-50"
                 >
                   {sharing ? (
                     "…"
