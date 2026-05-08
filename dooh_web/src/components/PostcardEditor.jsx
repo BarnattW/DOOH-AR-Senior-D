@@ -763,6 +763,18 @@ export default function PostcardEditor({ photo, onClose, onSaveToLibrary }) {
         </div>
 
         <div className="flex items-center gap-2">
+          {onSaveToLibrary && (
+            <button
+              type="button" onClick={handleSaveToLibrary}
+              disabled={saving || !previewUrl}
+              className="h-9 rounded-full px-4 text-xs font-semibold transition active:scale-95 disabled:opacity-30"
+              style={{
+                border: libSaved ? "1px solid rgba(100,200,100,0.5)" : `1px solid ${S.borderMed}`,
+                color:  libSaved ? "rgb(110,215,110)" : S.textSec,
+                background: S.surface,
+              }}
+            >{libSaved ? "✓ Saved" : "Save"}</button>
+          )}
           <button
             type="button" onClick={handleShare}
             disabled={saving || !previewUrl}
@@ -835,6 +847,15 @@ export default function PostcardEditor({ photo, onClose, onSaveToLibrary }) {
               onPointerCancel={handlePointerUp}
               onWheel={handleWheel}
             />
+            <div
+              className="pointer-events-none absolute bottom-7 left-1/2 -translate-x-1/2 rounded-full px-4 py-1.5 text-xs"
+              style={{
+                background: "rgba(0,0,0,0.75)",
+                color: S.textSec,
+                border: `1px solid ${S.border}`,
+                backdropFilter: "blur(8px)",
+              }}
+            >drag to pan · pinch to zoom</div>
           </>
         )}
       </div>
