@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 
 // Toggleable via ?debug=1 in URL. Reads stats from a ref so it doesn't
 // re-render the high-FPS render loop.
-export default function DebugOverlay({ statsRef, model, sessionUrl }) {
+export default function DebugOverlay({ statsRef, model, sessionUrl, isMovingRef }) {
   const [enabled] = useState(() =>
     typeof window !== "undefined" && new URLSearchParams(window.location.search).get("debug") === "1"
   );
@@ -26,6 +26,7 @@ export default function DebugOverlay({ statsRef, model, sessionUrl }) {
   const fps = s.fps != null ? s.fps.toFixed(1) : "—";
   const latency = s.latencyMs != null ? `${s.latencyMs.toFixed(0)}ms` : "—";
   const wsState = sessionUrl ? "open" : "closed";
+  const moving = isMovingRef?.current;
 
   return (
     <div className="pointer-events-none absolute right-2 top-20 z-50 rounded-md bg-black/75 px-2.5 py-1.5 font-mono text-[10px] leading-tight text-emerald-300">
@@ -33,6 +34,9 @@ export default function DebugOverlay({ statsRef, model, sessionUrl }) {
       <div>ws: {wsState}</div>
       <div>fps: {fps}</div>
       <div>latency: {latency}</div>
+      <div className={moving ? "text-red-400" : "text-emerald-300"}>
+        motion: {moving ? "MOVING" : "still"}
+      </div>
     </div>
   );
 }

@@ -37,7 +37,7 @@ export default function App() {
   const onDetections = useArStore((s) => s.onDetections);
 
   // ── Camera ────────────────────────────────────────────────────────────────
-  const { videoRef, isRunning, startWebcam, stopWebcam, zoom, setZoom, zoomCaps } = useCamera();
+  const { videoRef, isRunning, startWebcam, stopWebcam, zoom, setZoom, setZoomImmediate, zoomCaps } = useCamera();
   useEffect(() => { startWebcam(); }, []);
 
   // ── Detection: original / strong WS endpoints, or local ONNX ──────────────
@@ -106,6 +106,7 @@ export default function App() {
     targetRef: pixiCanvasRef,
     zoom,
     setZoom,
+    setZoomImmediate,
     zoomCaps,
     enabled: isRunning,
   });
@@ -208,14 +209,14 @@ export default function App() {
             }}
           />
 
-          <DetectionOverlay detections={detections} containerRef={pixiCanvasRef} />
+          <DetectionOverlay detections={detections} containerRef={pixiCanvasRef} activeFilterId={activeFilterId} />
 
           {isRunning && <LockOnOverlay arState={arState} />}
 
           {isRunning && <HelpButton />}
 
           {/* Optional debug overlay (?debug=1) */}
-          <DebugOverlay statsRef={statsRef} model={detectionMode} sessionUrl={session?.url} />
+          <DebugOverlay statsRef={statsRef} model={detectionMode} sessionUrl={session?.url} isMovingRef={isMovingRef} />
 
           <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/55 via-transparent via-35% to-black/75" />
 

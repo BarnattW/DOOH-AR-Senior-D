@@ -16,6 +16,9 @@ export function usePixiOverlay({ canvasRef: containerRef, videoRef, isRunning, l
     let cancelled = false;
     let dirLight = null;
     let pointLight = null;
+    let fillLight = null;
+    let sideLight = null;
+    let rimLight = null;
 
     async function ensureFilterPreloaded(filter) {
       if (!filter?.preload) return;
@@ -80,17 +83,35 @@ export function usePixiOverlay({ canvasRef: containerRef, videoRef, isRunning, l
 
       dirLight = new PIXI3D.Light();
       dirLight.type = PIXI3D.LightType.directional;
-      dirLight.intensity = 1.05;
-      dirLight.position.set(-4, 7, -4);
-      dirLight.rotationQuaternion.setEulerAngles(45, 45, 0);
+      dirLight.intensity = 1.15;
+      dirLight.position.set(-2, 6, 4);
+      dirLight.rotationQuaternion.setEulerAngles(28, 20, 0);
 
       pointLight = new PIXI3D.Light();
       pointLight.type = PIXI3D.LightType.point;
-      pointLight.intensity = 18;
-      pointLight.range = 40;
-      pointLight.position.set(1, 1.5, 3);
+      pointLight.intensity = 20;
+      pointLight.range = 55;
+      pointLight.position.set(0, 2.4, 4);
 
-      PIXI3D.LightingEnvironment.main.lights.push(dirLight, pointLight);
+      fillLight = new PIXI3D.Light();
+      fillLight.type = PIXI3D.LightType.directional;
+      fillLight.intensity = 0.95;
+      fillLight.position.set(4, 3, 5);
+      fillLight.rotationQuaternion.setEulerAngles(18, -35, 0);
+
+      sideLight = new PIXI3D.Light();
+      sideLight.type = PIXI3D.LightType.directional;
+      sideLight.intensity = 0.7;
+      sideLight.position.set(-5, 2, 2);
+      sideLight.rotationQuaternion.setEulerAngles(16, 58, 0);
+
+      rimLight = new PIXI3D.Light();
+      rimLight.type = PIXI3D.LightType.directional;
+      rimLight.intensity = 0.55;
+      rimLight.position.set(0, 5, -5);
+      rimLight.rotationQuaternion.setEulerAngles(42, 180, 0);
+
+      PIXI3D.LightingEnvironment.main.lights.push(dirLight, pointLight, fillLight, sideLight, rimLight);
 
       const occlusionMaskGfx = new PIXI.Graphics();
       const foregroundSprite = new PIXI.Sprite(videoTex);
@@ -268,7 +289,13 @@ export function usePixiOverlay({ canvasRef: containerRef, videoRef, isRunning, l
       renderCacheRef.current = {};
       if (PIXI3D.LightingEnvironment.main) {
         PIXI3D.LightingEnvironment.main.lights = PIXI3D.LightingEnvironment.main.lights.filter(
-          (light) => light !== dirLight && light !== pointLight
+          (light) => (
+            light !== dirLight &&
+            light !== pointLight &&
+            light !== fillLight &&
+            light !== sideLight &&
+            light !== rimLight
+          )
         );
       }
       if (appRef.current) {
