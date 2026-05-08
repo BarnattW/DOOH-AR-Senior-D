@@ -44,13 +44,12 @@ export function usePinchZoom({ targetRef, zoom, setZoom, setZoomImmediate, zoomC
     };
 
     const onTouchStart = (e) => {
-      console.log("[pinch] window touchstart, fingers:", e.touches.length, "enabled:", enabledRef.current);
       if (!enabledRef.current) return;
       if (e.touches.length === 2) {
+        e.preventDefault(); // suppress iOS native gesture recognition delay
         active = true;
         startDist = getTouchDist(e.touches) || 1;
         startZoom = zoomRef.current ?? 1;
-        console.log("[pinch] pinch start — dist:", startDist.toFixed(0), "zoom:", startZoom);
       }
     };
 
@@ -70,7 +69,7 @@ export function usePinchZoom({ targetRef, zoom, setZoom, setZoomImmediate, zoomC
       }
     };
 
-    window.addEventListener("touchstart", onTouchStart, { passive: true });
+    window.addEventListener("touchstart", onTouchStart, { passive: false });
     window.addEventListener("touchmove", onTouchMove, { passive: false });
     window.addEventListener("touchend", onTouchEnd, { passive: true });
     window.addEventListener("touchcancel", onTouchEnd, { passive: true });
