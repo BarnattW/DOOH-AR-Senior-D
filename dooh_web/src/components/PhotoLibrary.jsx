@@ -54,10 +54,10 @@ export default function PhotoLibrary({ photos, onClose, onPostcard }) {
     <div className="absolute inset-0 z-20 flex flex-col bg-black/90 text-white backdrop-blur-md">
       <div className="flex items-center justify-between px-4 pt-[max(1rem,env(safe-area-inset-top))] sm:px-5 sm:pt-5">
         <div>
-          <div className="text-[10px] font-semibold uppercase tracking-[0.3em] text-white/45">
+          <div className="font-syne text-[9px] font-bold uppercase tracking-[0.4em] text-white/45">
             Library
           </div>
-          <div className="mt-1 text-sm text-white/85">
+          <div className="font-syne mt-1 text-sm font-bold text-white/85">
             {photos.length} {photos.length === 1 ? "photo" : "photos"}
           </div>
         </div>
@@ -85,7 +85,7 @@ export default function PhotoLibrary({ photos, onClose, onPostcard }) {
                 <button
                   type="button"
                   onClick={() => onPostcard?.(selectedPhoto)}
-                  className="rounded-full border border-white/20 bg-white/10 px-5 py-2 text-sm font-semibold text-white backdrop-blur-md transition active:scale-95"
+                  className="font-syne rounded-full border border-white/20 bg-white/10 px-5 py-2 text-xs font-bold uppercase tracking-[0.06em] text-white backdrop-blur-md transition active:scale-95"
                 >
                   Postcard
                 </button>
@@ -93,14 +93,14 @@ export default function PhotoLibrary({ photos, onClose, onPostcard }) {
                   type="button"
                   onClick={handleShare}
                   disabled={sharing}
-                  className="flex items-center gap-1.5 rounded-full bg-white px-5 py-2 text-sm font-semibold text-black transition active:scale-95 disabled:opacity-50"
+                  className="font-syne flex items-center gap-1.5 rounded-full bg-accent px-5 py-2 text-xs font-bold uppercase tracking-[0.06em] text-white transition active:scale-95 disabled:opacity-50"
                 >
                   {sharing ? (
                     "…"
                   ) : (
                     <>
-                      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
-                        <path d="M7 1v8M3.5 4.5 7 1l3.5 3.5M2 11h10" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                      <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+                        <path d="M6 1v7M2.5 4 6 1l3.5 3M1 10.5h10" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
                       </svg>
                       Share
                     </>

@@ -34,14 +34,14 @@ export default function HelpButton() {
           role="dialog"
           className="absolute bottom-full left-0 mb-2 w-64 rounded-xl border border-white/15 bg-black/70 p-3 text-white shadow-xl backdrop-blur-md"
         >
-          <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.24em] text-white/55">
+          <div className="font-syne mb-2 text-[9px] font-bold uppercase tracking-[0.35em] text-white/50">
             Quick tips
           </div>
           <ul className="space-y-2 text-xs leading-snug">
             {TIPS.map(([title, body]) => (
               <li key={title}>
-                <div className="font-medium text-white/95">{title}</div>
-                <div className="text-white/70">{body}</div>
+                <div className="font-semibold text-white/95">{title}</div>
+                <div className="text-white/65">{body}</div>
               </li>
             ))}
           </ul>
