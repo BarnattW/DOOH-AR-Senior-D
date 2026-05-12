@@ -10,6 +10,11 @@ DOOH-AR-Senior-D/
 │   ├── models/        # ONNX / weights for the building detectors
 │   ├── scripts/       # Dataset utilities (e.g. HEIC → JPG)
 │   └── *.ipynb        # Notebooks for training and evaluation
+├── dooh_detection/    # GPU detection backend (FastAPI + Triton on a GCP VM)
+│   ├── detect_api.py  # FastAPI server: /ws, /ws_strong, /detect, /detect_strong
+│   ├── model_repo/    # Mirror of the Triton model repo (configs tracked, weights not)
+│   ├── systemd/       # detect.service + triton.service units
+│   └── Documentation.md
 └── dooh_web/          # React + Vite + PixiJS web app (the AR demo)
     ├── public/        # Bundled ONNX models served to the browser
     └── src/           # App, hooks, AR filters, detector clients, UI
@@ -19,9 +24,11 @@ DOOH-AR-Senior-D/
 
 The web app supports three detection backends, switchable at runtime via `?debug=1` or the `ModelToggle`:
 
-- **original** — remote WebSocket inference (`VITE_DETECT_WS_URL`)
-- **strong** — remote WebSocket inference using a heavier model (`VITE_DETECT_WS_URL_STRONG`)
+- **original** — remote WebSocket inference, `trio` model (`VITE_DETECT_WS_URL` → `/ws`)
+- **strong** — remote WebSocket inference, `trio_strong` model (`VITE_DETECT_WS_URL_STRONG` → `/ws_strong`)
 - **local** — in-browser ONNX Runtime Web inference (no network hop)
+
+> Despite the name, `trio_strong` is currently a **lighter** nano detection-only model, not a heavier one. The name stuck from an earlier iteration and was kept to avoid churning call sites. See [`dooh_detection/Documentation.md`](dooh_detection/Documentation.md) for backend details.
 
 ## Supported landmarks
 
@@ -31,4 +38,6 @@ The web app supports three detection backends, switchable at runtime via `?debug
 
 ## Quick start
 
-See [`dooh_web/README.md`](dooh_web/README.md) for running the AR app and [`dooh_ai/README.md`](dooh_ai/README.md) for the training / inference toolchain.
+- [`dooh_web/README.md`](dooh_web/README.md) — running the AR web app
+- [`dooh_ai/README.md`](dooh_ai/README.md) — training / inference toolchain
+- [`dooh_detection/Documentation.md`](dooh_detection/Documentation.md) — GPU detection backend (FastAPI + Triton + Caddy on a GCP VM)

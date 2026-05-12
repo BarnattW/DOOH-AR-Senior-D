@@ -1,0 +1,23 @@
+[Unit]
+Description=Triton Inference Server
+After=network-online.target docker.service
+Requires=docker.service
+
+[Service]
+User=amane_chibana
+Restart=always
+RestartSec=5
+
+ExecStartPre=-/usr/bin/docker stop triton
+ExecStartPre=-/usr/bin/docker rm triton
+
+ExecStart=/usr/bin/docker run --name triton --gpus all \
+  -p 127.0.0.1:8000:8000 \
+  -v /home/amane_chibana/model_repo:/models \
+  nvcr.io/nvidia/tritonserver:24.08-py3 \
+  tritonserver --model-repository=/models
+
+ExecStop=/usr/bin/docker stop triton
+
+[Install]
+WantedBy=multi-user.target

@@ -1,7 +1,12 @@
-# Real-Time AR Detection System (FINAL SETUP)
+# Real-Time AR Detection System
 
-This document contains everything required to recreate the GPU-backed real-time
-object detection system with secure WebSocket streaming.
+GPU-backed real-time object detection with secure WebSocket streaming.
+Two models are served concurrently for live A/B testing.
+
+> **Naming note:** `trio_strong` is **not** actually a stronger model. The name
+> stuck after the model was swapped to a lighter nano variant. Treat `trio_strong`
+> as "the newer/lighter detection-only model." `trio` is the original
+> segmentation-style YOLO model.
 
 ---
 
@@ -20,19 +25,55 @@ object detection system with secure WebSocket streaming.
 
 ## ARCHITECTURE
 
-Frontend (HTTPS)  
-↓  
-wss://ws.amanechibana.lol  
-↓  
-Cloudflare (proxy)  
-↓  
-Caddy (TLS termination :443)  
-↓  
-FastAPI (localhost:8080)  
-↓  
-Triton (localhost:8000)  
-↓  
-GPU (T4)
+```
+Frontend (HTTPS)
+        |
+        | WebSocket JPEG frames
+        v
+wss://ws.amanechibana.lol
+        |
+        v
+Cloudflare (proxy)
+        |
+        v
+Caddy (TLS termination :443)
+        |
+        v
+FastAPI (localhost:8080)   <-- /ws, /ws_strong, /detect, /detect_strong
+        |
+        | Triton HTTP client
+        v
+Triton (localhost:8000)
+        |
+        v
+ONNX models on GPU (T4)
+```
+
+---
+
+## MODELS
+
+Triton serves two models from `~/model_repo/`:
+
+| Model         | Version | Input              | Output           | Notes                                 |
+|---------------|---------|--------------------|------------------|---------------------------------------|
+| `trio`        | 2       | images [1,3,640,640] | output0 [1,39,8400] | Original seg-style YOLO. 4 box + 3 cls + 32 mask coeffs (mask coeffs ignored). |
+| `trio_strong` | 1       | images [1,3,640,640] | output0 [1,7,8400]  | Lightweight nano detection-only model (despite the name). 4 box + 3 cls. |
+
+Endpoint mapping:
+
+```
+/ws            -> trio
+/ws_strong     -> trio_strong
+/detect        -> trio
+/detect_strong -> trio_strong
+```
+
+Both endpoints return the same frontend format:
+
+```
+[x1, y1, x2, y2, confidence, classId]
+```
 
 ---
 
@@ -92,41 +133,43 @@ Test GPU in Docker:
 docker run --rm --gpus all nvidia/cuda:12.2.0-base nvidia-smi
 ```
 
-## STEP 5 — CREATE TRITON MODEL REPO
+## STEP 5 — DEPLOY TRITON MODEL REPO
+
+The canonical layout is mirrored in this repo at `model_repo/`. Sync it to
+the VM and drop the ONNX weights in:
 
 ```bash
-mkdir -p ~/model_repo/trio/1
-scp your_model.onnx USER@VM_IP:~
-mv ~/your_model.onnx ~/model_repo/trio/1/model.onnx
+rsync -av --exclude='MODEL.md' --exclude='README.md' \
+  model_repo/ USER@VM_IP:~/model_repo/
+
+scp trio.onnx        USER@VM_IP:~/model_repo/trio/2/model.onnx
+scp trio_strong.onnx USER@VM_IP:~/model_repo/trio_strong/1/model.onnx
 ```
 
-## STEP 6 — CREATE `config.pbtxt`
+Final on-VM structure:
 
-```bash
-nano ~/model_repo/trio/config.pbtxt
+```
+~/model_repo/
+  trio/
+    config.pbtxt
+    2/model.onnx
+  trio_strong/
+    config.pbtxt
+    1/model.onnx
 ```
 
-```pbtxt
-name: "trio"
-platform: "onnxruntime_onnx"
-max_batch_size: 0
+> Triton requires the weight file to be named exactly `model.onnx`.
+> Triton tries to load every folder under `~/model_repo/`. Move broken/disabled
+> models out (e.g. `~/model_repo_DISABLED/`) instead of leaving stubs.
 
-input [
-  {
-    name: "images"
-    data_type: TYPE_FP32
-    dims: [ 1, 3, 640, 640 ]
-  }
-]
+The two `config.pbtxt` files differ only in the output dim:
 
-output [
-  {
-    name: "output0"
-    data_type: TYPE_FP32
-    dims: [ 1, 39, 8400 ]
-  }
-]
-```
+- `trio`        → `dims: [ 1, 39, 8400 ]`
+- `trio_strong` → `dims: [ 1, 7, 8400 ]`
+
+A mismatch here is the most common cause of Triton failing to load a model.
+There is no separate "STEP 6" — the configs ship with the repo at
+`model_repo/trio/config.pbtxt` and `model_repo/trio_strong/config.pbtxt`.
 
 ## STEP 7 — RUN TRITON (SYSTEMD)
 
@@ -162,10 +205,11 @@ sudo systemctl enable triton
 sudo systemctl restart triton
 ```
 
-Verify:
+Verify both models:
 
 ```bash
 curl http://127.0.0.1:8000/v2/models/trio
+curl http://127.0.0.1:8000/v2/models/trio_strong
 ```
 
 ## STEP 8 — FASTAPI BACKEND
@@ -174,225 +218,37 @@ curl http://127.0.0.1:8000/v2/models/trio
 sudo apt install -y python3-pip python3-venv
 python3 -m venv ~/venv
 source ~/venv/bin/activate
-pip install fastapi uvicorn[standard] tritonclient[http] numpy pillow python-multipart anyio
+pip install fastapi uvicorn[standard] tritonclient[http] numpy pillow python-multipart anyio onnx
 ```
 
-## STEP 9 — CREATE `detect_api.py`
+## STEP 9 — DEPLOY `detect_api.py`
 
-```python
-from fastapi import FastAPI, UploadFile, File, WebSocket, WebSocketDisconnect
-from fastapi.middleware.cors import CORSMiddleware
-import numpy as np
-from PIL import Image
-import tritonclient.http as httpclient
-import math
-import io
-import anyio
-import logging
-import time
+The canonical server lives in this repo at `detect_api.py`. Copy it onto the VM:
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger("detect_ws")
+```bash
+scp detect_api.py USER@VM_IP:~/detect_api.py
+```
 
-app = FastAPI()
+It exposes:
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-MODEL = "trio"
-INPUT = "images"
-OUTPUT = "output0"
-
-CONF_THRESH = 0.6
-IOU_THRESH = 0.5
-MAX_DETECTIONS = 1
-NUM_CLASSES = 3
-
-client = httpclient.InferenceServerClient("localhost:8000")
-
-
-def sigmoid(x):
-    return 1 / (1 + math.exp(-x))
-
-
-def nms(boxes):
-    boxes.sort(key=lambda x: x[4], reverse=True)
-    keep = []
-    for b in boxes:
-        x1, y1, x2, y2, conf, cls = b
-        should_keep = True
-        for k in keep:
-            kx1, ky1, kx2, ky2, _, _ = k
-            interX1 = max(x1, kx1)
-            interY1 = max(y1, ky1)
-            interX2 = min(x2, kx2)
-            interY2 = min(y2, ky2)
-            inter = max(0, interX2 - interX1) * max(0, interY2 - interY1)
-            area1 = max(0, x2 - x1) * max(0, y2 - y1)
-            area2 = max(0, kx2 - kx1) * max(0, ky2 - ky1)
-            union = area1 + area2 - inter
-            if union > 0 and inter / union > IOU_THRESH:
-                should_keep = False
-                break
-        if should_keep:
-            keep.append(b)
-            if len(keep) >= MAX_DETECTIONS:
-                break
-    return keep
-
-
-def letterbox(img, new_shape=640):
-    w0, h0 = img.size
-    r = min(new_shape / w0, new_shape / h0)
-    nw, nh = int(w0 * r), int(h0 * r)
-    img2 = img.resize((nw, nh))
-    canvas = Image.new("RGB", (new_shape, new_shape), (114, 114, 114))
-    dx = (new_shape - nw) // 2
-    dy = (new_shape - nh) // 2
-    canvas.paste(img2, (dx, dy))
-    return canvas, r, dx, dy, w0, h0
-
-
-def sanitize_boxes(boxes):
-    clean = []
-    for b in boxes:
-        if len(b) != 6:
-            continue
-
-        x1, y1, x2, y2, conf, cls = b
-        vals = [x1, y1, x2, y2, conf]
-
-        try:
-            if any(not math.isfinite(float(v)) for v in vals):
-                continue
-
-            clean.append([
-                float(x1),
-                float(y1),
-                float(x2),
-                float(y2),
-                float(conf),
-                int(cls),
-            ])
-        except Exception:
-            logger.exception("Failed to sanitize box: %r", b)
-            continue
-
-    return clean
-
-
-def infer_bytes(jpeg: bytes):
-    img = Image.open(io.BytesIO(jpeg)).convert("RGB")
-    boxed, r, dx, dy, iw, ih = letterbox(img, 640)
-    arr = np.asarray(boxed).astype(np.float32) / 255.0
-    x = np.transpose(arr, (2, 0, 1))[None, ...]
-
-    inp = httpclient.InferInput(INPUT, x.shape, "FP32")
-    inp.set_data_from_numpy(x)
-    out = httpclient.InferRequestedOutput(OUTPUT)
-
-    y = client.infer(MODEL, inputs=[inp], outputs=[out]).as_numpy(OUTPUT)[0]
-
-    boxes = []
-    for i in range(y.shape[1]):
-        xc, yc, w, h = y[0, i], y[1, i], y[2, i], y[3, i]
-        scores = [sigmoid(y[4 + j, i]) for j in range(NUM_CLASSES)]
-        conf = max(scores)
-        if conf < CONF_THRESH:
-            continue
-
-        cls = int(np.argmax(scores))
-
-        x1 = (xc - w / 2 - dx) / r
-        y1 = (yc - h / 2 - dy) / r
-        x2 = (xc + w / 2 - dx) / r
-        y2 = (yc + h / 2 - dy) / r
-
-        boxes.append([x1, y1, x2, y2, conf, cls])
-
-    return sanitize_boxes(nms(boxes))
-
-
-@app.post("/detect")
-async def detect(file: UploadFile = File(...)):
-    try:
-        jpeg = await file.read()
-        res = await anyio.to_thread.run_sync(infer_bytes, jpeg)
-        return res
-    except Exception as e:
-        logger.exception("HTTP detect failed")
-        return {"error": str(e)}
-
-
-@app.websocket("/ws")
-async def ws_detect(ws: WebSocket):
-    await ws.accept()
-    client_host = getattr(ws.client, "host", "unknown")
-    logger.info("WebSocket connected from %s", client_host)
-
-    try:
-        while True:
-            jpeg = await ws.receive_bytes()
-            started = time.perf_counter()
-            size_kb = len(jpeg) / 1024.0
-
-            res = await anyio.to_thread.run_sync(infer_bytes, jpeg)
-
-            latency_ms = (time.perf_counter() - started) * 1000.0
-            logger.info(
-                "Frame processed size_kb=%.1f latency_ms=%.1f detections=%d payload=%r",
-                size_kb,
-                latency_ms,
-                len(res),
-                res,
-            )
-
-            await ws.send_json(res)
-
-    except WebSocketDisconnect:
-        logger.info("WebSocket disconnected by client: %s", client_host)
-    except Exception:
-        logger.exception("ws_detect crashed for client=%s", client_host)
-        try:
-            await ws.close(code=1011, reason="server error")
-        except Exception:
-            pass
+```
+GET  /health
+POST /detect
+POST /detect_strong
+WS   /ws
+WS   /ws_strong
 ```
 
 ## STEP 10 — RUN FASTAPI AS SERVICE
 
+The canonical unit file lives in this repo at `systemd/detect.service`.
+
 ```bash
-sudo tee /etc/systemd/system/detect.service >/dev/null <<EOF
-[Unit]
-Description=Detection API
-After=network.target docker.service triton.service
-Requires=triton.service
-
-[Service]
-User=amane_chibana
-WorkingDirectory=/home/amane_chibana
-ExecStartPre=/bin/sleep 5
-ExecStart=/home/amane_chibana/venv/bin/uvicorn detect_api:app \
-  --host 0.0.0.0 \
-  --port 8080 \
-  --ws-ping-interval 20 \
-  --ws-ping-timeout 60
-
-Restart=always
-RestartSec=5
-
-[Install]
-WantedBy=multi-user.target
-EOF
-
+sudo cp systemd/detect.service /etc/systemd/system/detect.service
 sudo systemctl daemon-reload
 sudo systemctl enable detect
 sudo systemctl restart detect
+sudo systemctl status detect --no-pager
 ```
 
 ## STEP 11 — INSTALL CADDY (TLS + WSS)
@@ -412,29 +268,27 @@ sudo apt install -y caddy
 
 ## STEP 12 — CONFIGURE CADDY
 
-```bash
-sudo nano /etc/caddy/Caddyfile
-```
-
 ```caddy
 ws.amanechibana.lol {
     reverse_proxy 127.0.0.1:8080
 }
 ```
 
-Restart:
-
 ```bash
 sudo systemctl restart caddy
-sudo systemctl status caddy
 ```
+
+Caddy proxies all paths, so `/ws`, `/ws_strong`, `/detect`, `/detect_strong`
+and `/health` are all reachable through the single hostname.
 
 ## STEP 13 — FIREWALL
 
 Allow:
 
-- TCP: 443
-- TCP: 8080 (optional dev only)
+- TCP 443
+- TCP 8080 (dev only — skip in prod)
+
+Do **not** publicly expose TCP 8000 (Triton). FastAPI talks to it on localhost.
 
 ## STEP 14 — CLOUDFLARE
 
@@ -450,7 +304,16 @@ SSL:
 
 ```env
 VITE_DETECT_URL=https://ws.amanechibana.lol/detect
+VITE_DETECT_STRONG_URL=https://ws.amanechibana.lol/detect_strong
 VITE_DETECT_WS_URL=wss://ws.amanechibana.lol/ws
+VITE_DETECT_WS_STRONG_URL=wss://ws.amanechibana.lol/ws_strong
+```
+
+For direct VM testing without Cloudflare/Caddy:
+
+```env
+VITE_DETECT_WS_URL=ws://<VM_IP>:8080/ws
+VITE_DETECT_WS_STRONG_URL=ws://<VM_IP>:8080/ws_strong
 ```
 
 ## TESTING
@@ -458,6 +321,7 @@ VITE_DETECT_WS_URL=wss://ws.amanechibana.lol/ws
 ```bash
 curl http://127.0.0.1:8080/health
 curl http://127.0.0.1:8000/v2/models/trio
+curl http://127.0.0.1:8000/v2/models/trio_strong
 curl https://ws.amanechibana.lol/docs
 ```
 
@@ -465,20 +329,45 @@ Browser:
 
 ```js
 new WebSocket("wss://ws.amanechibana.lol/ws")
+new WebSocket("wss://ws.amanechibana.lol/ws_strong")
 ```
 
 ## DEBUGGING
 
-Logs:
-
 ```bash
 sudo journalctl -u detect -f
 sudo journalctl -u triton -f
+docker logs -f triton
 ```
 
-## MODEL UPDATE
+## MODEL UPDATE / SWAP
+
+Always verify ONNX shapes before swapping:
 
 ```bash
-cp new_model.onnx ~/model_repo/trio/1/model.onnx
+source ~/venv/bin/activate
+python3 - <<'PY'
+import onnx
+m = onnx.load("/path/to/model.onnx")
+for i in m.graph.input:
+    print("INPUT", i.name, [d.dim_value or d.dim_param for d in i.type.tensor_type.shape.dim])
+for o in m.graph.output:
+    print("OUTPUT", o.name, [d.dim_value or d.dim_param for d in o.type.tensor_type.shape.dim])
+PY
+```
+
+Common shapes:
+
+- `[1,3,640,640]` input + `[1,39,8400]` output → YOLO seg-style (use `trio` config)
+- `[1,3,640,640]` input + `[1,7,8400]`  output → detection-only (use `trio_strong` config)
+
+Then drop the new weight in and restart Triton:
+
+```bash
+cp new_model.onnx ~/model_repo/trio_strong/1/model.onnx
 sudo systemctl restart triton
 ```
+
+> Historical note: `trio_strong` originally crashed Triton because its config
+> claimed `[1,39,8400]` but the actual ONNX output is `[1,7,8400]`. Always
+> match `config.pbtxt` to the ONNX graph.
