@@ -76,7 +76,7 @@ def train_model():
     fp16_path = model.export(
         format="onnx",
         device=0,
-        opset=17,
+        opset=18,
         half=True,
         simplify=True,
         dynamic=False,
@@ -91,7 +91,7 @@ def train_model():
     # fp32 export
     fp32_path = model.export(
         format="onnx",
-        opset=17,
+        opset=18,
         simplify=True,
         dynamic=False,
         project="./models/yolov8s/fp32",
