@@ -41,3 +41,5 @@ The web app supports three detection backends, switchable at runtime via `?debug
 - [`dooh_web/README.md`](dooh_web/README.md) — running the AR web app
 - [`dooh_ai/README.md`](dooh_ai/README.md) — training / inference toolchain
 - [`dooh_detection/Documentation.md`](dooh_detection/Documentation.md) — GPU detection backend (FastAPI + Triton + Caddy on a GCP VM)
+
+### DISCLAIMER: WE HAVE USED AI FOR DOCUMENTATION, CLEANUP AND CODE REVIEW
